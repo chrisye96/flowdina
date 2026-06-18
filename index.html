@@ -334,6 +334,10 @@
     <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>颜色设置</button>
     <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>新增阶段</button>
     <button class="tbtn" onclick="resetTemplate()" title="清除所有改动，恢复到初始模板"><i data-lucide="rotate-ccw"></i>重置模板</button>
+    <button class="tbtn" onclick="exportJSON()" title="把当前图表保存为 JSON 文件"><i data-lucide="braces"></i>导出 JSON</button>
+    <button class="tbtn" onclick="document.getElementById('import-json').click()" title="从 JSON 文件载入图表"><i data-lucide="upload"></i>导入 JSON</button>
+    <input type="file" id="import-json" accept="application/json,.json" style="display:none">
+    <button class="tbtn" onclick="copyShareLink()" title="复制包含当前图表的分享链接"><i data-lucide="link"></i>分享链接</button>
     <span id="status"></span>
     <span id="saved" class="saved-ind"><i data-lucide="check"></i>已自动保存</span>
     <span class="hint">改动会自动保存到本机浏览器 · 点击文字直接编辑 · 选中文字可加粗 / 改色 · 悬停出现 ＋（加内容）和 ×（删除）· 导出仅含图表</span>
@@ -1075,18 +1079,93 @@
     saveState();
   }
 
-  restoreState();   // load saved work if present (colour inputs already built above)
-  initBoard();      // wire whatever is now in the board (saved or template)
+  // ---- Shareable URL (Phase 1): full state gzipped into the location hash ----
+  // Native CompressionStream, no dependency, no backend.
+  function b64urlFromBytes(bytes){ let s=''; for(const b of bytes) s+=String.fromCharCode(b); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function bytesFromB64url(str){ str=str.replace(/-/g,'+').replace(/_/g,'/'); const bin=atob(str); const out=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i); return out; }
+  async function gzip(str){ const cs=new CompressionStream('gzip'); const w=cs.writable.getWriter(); w.write(new TextEncoder().encode(str)); w.close(); const buf=await new Response(cs.readable).arrayBuffer(); return b64urlFromBytes(new Uint8Array(buf)); }
+  async function gunzip(b64){ const ds=new DecompressionStream('gzip'); const w=ds.writable.getWriter(); w.write(bytesFromB64url(b64)); w.close(); return await new Response(ds.readable).text(); }
 
-  // Connect autosave AFTER initial wiring so setup itself doesn't count as an edit.
-  (function connectAutosave(){
+  // Strip anything executable before injecting untrusted board HTML (shared links,
+  // imported files). Our boards never legitimately contain these, so it is lossless.
+  function safeBoardHtml(html){
+    const tpl = document.createElement('template'); tpl.innerHTML = html;
+    tpl.content.querySelectorAll('script,iframe,object,embed,link,meta').forEach(n => n.remove());
+    tpl.content.querySelectorAll('*').forEach(el => {
+      [...el.attributes].forEach(a => {
+        if(/^on/i.test(a.name)) el.removeAttribute(a.name);
+        if((a.name === 'href' || a.name === 'src') && /^\s*javascript:/i.test(a.value)) el.removeAttribute(a.name);
+      });
+    });
+    return tpl.innerHTML;
+  }
+
+  async function copyShareLink(){
+    const status=document.getElementById('status'); status.textContent='生成链接…';
+    try{
+      const enc=await gzip(JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
+      // ponytail: full state in the hash, ceiling ~tens of KB. Huge boards make
+      // long links — use "导出 JSON" instead then.
+      const url=location.origin+location.pathname+'#s='+enc;
+      await navigator.clipboard.writeText(url);   // clipboard only; keep the working URL clean
+      status.textContent = enc.length>30000 ? '链接已复制（较长，建议改用 JSON 文件）' : '分享链接已复制 ✓';
+    }catch(e){ console.error(e); status.textContent='生成链接失败'; }
+    setTimeout(()=>status.textContent='',3000);
+  }
+  async function loadFromHash(){
+    const m=location.hash.match(/^#s=(.+)$/); if(!m) return false;
+    try{
+      const data=JSON.parse(await gunzip(m[1]));
+      if(!data || typeof data.html!=='string') return false;
+      boardEl.innerHTML=safeBoardHtml(data.html); applyColors(data.colors); return true;
+    }catch(e){ console.error(e); return false; }
+  }
+
+  // Boot: a shared hash wins over localStorage; otherwise restore saved work.
+  // Connect autosave only after wiring so setup itself doesn't count as an edit.
+  (async function boot(){
+    const fromHash = await loadFromHash();
+    if(!fromHash) restoreState();
+    initBoard();
     const obs = new MutationObserver(scheduleSave);
     obs.observe(boardEl, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
     boardEl.addEventListener('input', scheduleSave);
-    // Flush any pending debounce on the way out so the last keystroke is never lost.
     window.addEventListener('beforeunload', () => { if(autosaveReady){ clearTimeout(saveTimer); saveState(); } });
     autosaveReady = true;
+    // Opened from a shared link: persist it locally and clean the URL so edits
+    // survive a reload like any other board.
+    if(fromHash){ saveState(); history.replaceState(null,'',location.pathname); }
   })();
+
+  // ---------------- JSON export / import (Phase 0: portability) ----------------
+  // Same {html, colors} shape as the autosave, just to/from a file. Round-trips
+  // exactly because it reuses the same serialization.
+  function exportJSON(){
+    const data = { v:1, html: serializeBoard(), colors: currentColors() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'franchisee-journey.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  function importJSON(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try{ data = JSON.parse(reader.result); }catch(e){ alert('文件不是有效的 JSON'); return; }
+      if(!data || typeof data.html !== 'string'){ alert('JSON 缺少 board 内容'); return; }
+      boardEl.innerHTML = safeBoardHtml(data.html);   // imported files are untrusted too
+      applyColors(data.colors);
+      initBoard();
+      scheduleSave();
+    };
+    reader.readAsText(file);
+  }
+  document.getElementById('import-json').addEventListener('change', e => {
+    if(e.target.files[0]) importJSON(e.target.files[0]);
+    e.target.value = '';   // let the same file be re-imported
+  });
 
   // ---------------- Export (captures ONLY #board) ----------------
   function pageBg(){
