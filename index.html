@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Franchisee Journey</title>
+
+<!-- Icon library (per preference: use an icon library instead of hand-drawn SVG) -->
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<!-- Export libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  :root{
+    /* Banner */
+    --banner-from:#1d4ed8; --banner-to:#2563eb; --banner-text:#ffffff;
+    --badge-bg:#3b82f6; --badge-text:#ffffff;
+    /* Stage headers */
+    --col1:#374151; --col2:#16a34a; --col3:#2563eb;
+    --col4:#6d28d9; --col5:#f59e0b; --col6:#7c3aed;
+    --col-text:#ffffff;
+    /* Cards & text */
+    --page-bg:#eef1f5; --card-bg:#ffffff; --card-border:#e5e7eb;
+    --title-color:#1f2937; --body-color:#6b7280;
+    --label-color:#6b7280; --value-color:#111827;
+    --accent:#2563eb;
+    /* Buttons */
+    --btn-primary:#2563eb; --btn-primary-text:#ffffff;
+    --btn-outline-border:#d1d5db; --btn-outline-text:#374151;
+    --btn-danger:#dc2626; --btn-danger-text:#ffffff;
+    /* Boxes */
+    --note-bg:#f9fafb; --note-border:#eef0f3; --note-label:#9ca3af;
+    --warn-bg:#fffbeb; --warn-border:#fde68a; --warn-text:#b45309;
+    --danger-card-bg:#fff5f5; --danger-card-border:#fecaca; --danger-tag-bg:#ef4444;
+    /* Icons */
+    --ic-green:#16a34a; --ic-blue:#2563eb; --ic-indigo:#6d28d9;
+    --ic-orange:#f59e0b; --ic-red:#dc2626;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:#f3f4f6;
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#1f2937;
+  }
+
+  /* ---------- Toolbar (NOT part of the exported chart) ---------- */
+  .toolbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    padding:12px 18px; background:#ffffff; border-bottom:1px solid #e5e7eb;
+  }
+  .tbtn{
+    display:inline-flex; align-items:center; gap:7px;
+    padding:9px 14px; border-radius:9px; border:1px solid #d1d5db;
+    background:#fff; color:#374151; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .tbtn:hover{background:#f9fafb;}
+  .tbtn.primary{background:#111827; color:#fff; border-color:#111827;}
+  .tbtn.primary:hover{background:#1f2937;}
+  .tbtn svg{width:16px; height:16px;}
+  .hint{font-size:12.5px; color:#6b7280; margin-left:auto;}
+  #status{font-size:12.5px; color:#2563eb; font-weight:600;}
+  .saved-ind{display:inline-flex; align-items:center; gap:4px; font-size:12.5px; color:#16a34a; font-weight:600; opacity:0; transition:opacity .3s ease;}
+  .saved-ind.show{opacity:1;}
+  .saved-ind svg{width:14px; height:14px;}
+
+  /* ---------- Page / board wrapper ---------- */
+  .page{padding:22px; display:flex; justify-content:center;}
+  .board-wrap{overflow:auto; max-width:100%;}
+
+  /* ===================== THE CHART (#board = export target) ===================== */
+  #board{
+    width:1380px; background:var(--page-bg);
+    padding:22px; border-radius:14px; color:var(--title-color);
+  }
+
+  .banner{
+    display:flex; justify-content:space-between; align-items:center;
+    background:linear-gradient(135deg,var(--banner-from),var(--banner-to));
+    border-radius:12px; padding:16px 22px; margin-bottom:16px;
+  }
+  .banner-left{display:flex; gap:11px; align-items:center;}
+  .banner-left svg{width:23px; height:23px; color:var(--banner-text);}
+  .banner-title{font-size:21px; font-weight:800; color:var(--banner-text); letter-spacing:.2px;}
+  .badge{
+    display:flex; gap:8px; align-items:center;
+    background:var(--badge-bg); color:var(--badge-text);
+    padding:9px 15px; border-radius:9px; font-size:13.5px; font-weight:600;
+  }
+  .badge svg{width:16px; height:16px;}
+
+  .columns{display:flex; gap:12px; align-items:flex-start;}
+  .col{flex:1 1 0; min-width:0; position:relative;}
+
+  .col-head{border-radius:10px; padding:12px 13px; margin-bottom:12px; background:#888;}
+  .col-head.c1{background:var(--col1);} .col-head.c2{background:var(--col2);}
+  .col-head.c3{background:var(--col3);} .col-head.c4{background:var(--col4);}
+  .col-head.c5{background:var(--col5);} .col-head.c6{background:var(--col6);}
+  .col-head-top{display:flex; gap:8px; align-items:center;}
+  .num{
+    flex:none; min-width:19px; height:19px; line-height:19px; padding:0 5px;
+    background:rgba(255,255,255,.25); color:var(--col-text);
+    border-radius:5px; font-size:11.5px; font-weight:700; text-align:center;
+  }
+  .col-title{font-size:13.5px; font-weight:700; color:var(--col-text); line-height:1.2;}
+  .col-sub{font-size:11px; color:var(--col-text); opacity:.85; margin-top:3px;}
+
+  .card{
+    background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px;
+    padding:14px; margin-bottom:12px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+    position:relative;
+  }
+  .card-row{display:flex; gap:9px; align-items:flex-start;}
+  .card-icon{
+    flex:none; width:28px; height:28px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .card-icon svg{width:16px; height:16px; color:#fff;}
+  .ic-green{background:var(--ic-green);} .ic-blue{background:var(--ic-blue);}
+  .ic-indigo{background:var(--ic-indigo);} .ic-orange{background:var(--ic-orange);}
+  .ic-red{background:var(--ic-red);}
+  .card-title{font-size:13px; font-weight:700; color:var(--title-color); line-height:1.25;}
+  .card-body{font-size:11.5px; color:var(--body-color); line-height:1.5; margin:9px 0;}
+
+  .label-only{font-size:11.5px; color:var(--label-color); margin-top:8px;}
+  .field{
+    display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+    font-size:11.5px; margin:5px 0;
+  }
+  .f-label{color:var(--label-color); flex:none;}
+  .f-value{color:var(--value-color); font-weight:700; text-align:right;}
+  .f-value.normal{font-weight:500; color:var(--body-color);}
+  .f-sub{color:var(--label-color); font-weight:500;}
+
+  .btn{
+    margin-top:9px; padding:9px 11px; border-radius:8px;
+    font-size:12px; font-weight:600; text-align:center; line-height:1.2;
+  }
+  .btn-primary{background:var(--btn-primary); color:var(--btn-primary-text);}
+  .btn-danger{background:var(--btn-danger); color:var(--btn-danger-text);}
+  .btn-outline{
+    background:#fff; border:1px solid var(--btn-outline-border); color:var(--btn-outline-text);
+    display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .btn-outline svg{width:14px; height:14px;}
+  .with-icon{display:flex; align-items:center; justify-content:space-between;}
+  .with-icon svg{width:16px; height:16px;}
+
+  .note{background:var(--note-bg); border:1px solid var(--note-border); border-radius:8px; padding:9px 10px; margin-top:9px;}
+  .note-head{display:flex; gap:6px; align-items:center; margin-bottom:5px;}
+  .note-head svg{width:14px; height:14px; color:var(--note-label);}
+  .note-label{font-size:9.5px; font-weight:700; letter-spacing:.07em; color:var(--note-label);}
+  .note-body{font-size:11px; color:var(--body-color); line-height:1.45; margin-top:3px;}
+  .accent{color:var(--accent); font-weight:700;}
+
+  .verify{margin-top:9px;}
+  .verify-title{font-size:11.5px; font-weight:700; color:var(--accent);}
+  .verify-row{display:flex; gap:6px; align-items:center; font-size:11.5px; color:var(--body-color); margin-top:4px;}
+  .verify-row svg{width:14px; height:14px; color:var(--accent);}
+
+  .warn{background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:8px; padding:9px 10px; margin-top:9px;}
+  .warn-head{display:flex; gap:7px; align-items:center;}
+  .warn-head svg{width:15px; height:15px; color:var(--warn-text);}
+  .warn-title{font-size:11.5px; font-weight:700; color:var(--warn-text);}
+  .warn-text{font-size:11px; color:var(--warn-text); opacity:.9; margin-top:4px; line-height:1.45;}
+
+  .notif-card .card-row{align-items:center;}
+  .notif-head{display:flex; gap:7px; align-items:center;}
+  .notif-head svg{width:16px; height:16px; color:var(--note-label);}
+  .notif-title{font-size:10.5px; font-weight:700; letter-spacing:.06em; color:var(--note-label);}
+
+  .danger-card{background:var(--danger-card-bg); border-color:var(--danger-card-border);}
+  .corner-tag{
+    position:absolute; top:-9px; right:11px;
+    background:var(--danger-tag-bg); color:#fff;
+    font-size:9px; font-weight:700; letter-spacing:.04em;
+    padding:3px 7px; border-radius:6px;
+  }
+
+  /* ---------- Editing affordances (never appear in export) ----------
+     Important: do NOT change the element's background while editing.
+     Each text element keeps its own background, so its text contrast
+     (e.g. white text on a colored header) is preserved while typing.
+     Highlight colors are fixed (not themeable) so they stay visible
+     against any palette the user chooses. */
+  [contenteditable]{caret-color:auto;}
+  [contenteditable]:hover{outline:1px dashed rgba(120,120,120,.6); outline-offset:1px; border-radius:3px;}
+  [contenteditable]:focus{outline:2px solid #3b82f6; outline-offset:2px; border-radius:3px;}
+  /* On export, only strip the editing outline. Do NOT force a transparent
+     background here: editable elements that legitimately carry a fill
+     (buttons, the danger corner-tag) would otherwise lose it and render
+     white-on-white in the PNG/PDF. Editing never adds a background, so
+     there is nothing else to clear. */
+  body.exporting [contenteditable]{outline:none !important;}
+
+  /* ---------- Inline formatting toolbar (bold + text color; never exported) ---------- */
+  .seltool{
+    position:fixed; z-index:80; display:none; align-items:center; gap:7px;
+    background:#1f2937; padding:6px 9px; border-radius:11px;
+    box-shadow:0 8px 24px rgba(0,0,0,.28); user-select:none;
+  }
+  .st-btn{
+    width:28px; height:28px; border:none; border-radius:7px; background:transparent;
+    color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .st-btn:hover{background:rgba(255,255,255,.16);}
+  .st-btn.active{background:#3b82f6;}
+  .st-btn svg{width:16px; height:16px;}
+  .st-sep{width:1px; height:20px; background:rgba(255,255,255,.22);}
+  .st-sw{
+    width:18px; height:18px; border-radius:50%; padding:0; cursor:pointer;
+    border:2px solid rgba(255,255,255,.3); transition:transform .1s;
+  }
+  .st-sw:hover{transform:scale(1.15);}
+  .st-custom{
+    position:relative; width:28px; height:28px; border-radius:7px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .st-custom:hover{background:rgba(255,255,255,.16);}
+  .st-custom svg{width:16px; height:16px; color:#fff; pointer-events:none;}
+  .st-custom input[type=color]{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; padding:0; cursor:pointer;}
+
+  /* ---------- Delete affordances (never exported) ---------- */
+  /* Smaller + calmer than before: faded until you hover the button itself,
+     so it reads as a quiet affordance rather than an alarm that follows the
+     cursor. A short hover-intent delay (in JS) stops it flickering. */
+  .del-float{
+    position:fixed; z-index:85; display:none; width:20px; height:20px;
+    border:none; border-radius:6px; background:#ef4444; color:#fff; cursor:pointer;
+    align-items:center; justify-content:center; box-shadow:0 2px 7px rgba(0,0,0,.22);
+    opacity:.78; transform:scale(.9);
+    transition:opacity .12s ease, transform .12s ease, background .12s ease;
+  }
+  .del-float.show{display:flex;}
+  .del-float:hover{opacity:1; transform:scale(1.08); background:#dc2626;}
+  .del-float svg{width:12px; height:12px;}
+  /* Two-stage scope preview: faint while merely hovering the block,
+     bright + tinted only once the cursor is on the × (about to delete). */
+  .rm-active{outline:1.5px dashed rgba(220,38,38,.28); outline-offset:2px; border-radius:8px;}
+  .rm-active.rm-armed{outline-color:rgba(220,38,38,.9); background:rgba(254,226,226,.4);}
+  .col-head{position:relative;}
+  .col-del{
+    position:absolute; top:9px; right:9px; display:none;
+    width:22px; height:22px; border:none; border-radius:6px; cursor:pointer;
+    background:rgba(255,255,255,.25); color:#fff; align-items:center; justify-content:center;
+  }
+  .col-del:hover{background:rgba(255,255,255,.4);}
+  .col-del svg{width:13px; height:13px;}
+  .col-head:hover .col-del{display:flex;}
+  .col-head:has(.col-del:hover) .col-title{opacity:.5;}
+  .toast{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    z-index:90; display:none; align-items:center; gap:14px;
+    background:#1f2937; color:#fff; padding:11px 16px; border-radius:11px;
+    font-size:13.5px; box-shadow:0 8px 24px rgba(0,0,0,.28);
+  }
+  .toast.show{display:flex;}
+  .toast button{
+    background:transparent; border:none; color:#7dd3fc; font-size:13.5px; font-weight:700; cursor:pointer; padding:0;
+  }
+  body.exporting .del-float, body.exporting .col-del, body.exporting .toast{display:none !important;}
+  body.exporting .rm-active{outline:none !important;}
+
+  /* ---------- Add-content affordances (never exported) ---------- */
+  .add-float{
+    position:fixed; z-index:85; display:none; width:24px; height:24px;
+    border:none; border-radius:7px; background:#2563eb; color:#fff; cursor:pointer;
+    align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.28);
+  }
+  .add-float.show{display:flex;}
+  .add-float svg{width:15px; height:15px;}
+  .add-menu, .icon-picker{
+    position:fixed; z-index:86; display:none; background:#1f2937; color:#fff;
+    padding:6px; border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.32);
+  }
+  .add-menu.show, .icon-picker.show{display:block;}
+  .add-menu button{
+    display:flex; align-items:center; gap:9px; width:100%; padding:8px 14px 8px 10px;
+    border:none; background:transparent; color:#fff; font-size:13px; cursor:pointer;
+    border-radius:7px; text-align:left; white-space:nowrap;
+  }
+  .add-menu button:hover{background:rgba(255,255,255,.15);}
+  .add-menu button svg{width:15px; height:15px;}
+  .icon-picker{padding:9px;}
+  .ip-grid{display:grid; grid-template-columns:repeat(6,32px); gap:5px;}
+  .ip-grid button{
+    width:32px; height:32px; border:none; border-radius:7px; cursor:pointer;
+    background:rgba(255,255,255,.08); color:#fff; display:flex; align-items:center; justify-content:center;
+  }
+  .ip-grid button:hover{background:rgba(255,255,255,.22);}
+  .ip-grid button svg{width:16px; height:16px;}
+  .ip-colors{display:flex; gap:6px; margin-top:9px; justify-content:center;}
+  .ip-color{width:20px; height:20px; border-radius:50%; padding:0; cursor:pointer; border:2px solid rgba(255,255,255,.3);}
+  .add-card-bar{
+    display:flex; align-items:center; justify-content:center; gap:6px; width:100%;
+    margin-top:2px; padding:9px; border:1.5px dashed #cbd5e1; border-radius:10px;
+    background:transparent; color:#64748b; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .add-card-bar:hover{border-color:#2563eb; color:#2563eb; background:rgba(37,99,235,.05);}
+  .add-card-bar svg{width:14px; height:14px;}
+  body.exporting .add-ui{display:none !important;}
+  body.exporting .add-float, body.exporting .add-menu, body.exporting .icon-picker{display:none !important;}
+
+  /* ---------- Color settings panel (NOT part of export) ---------- */
+  .settings{
+    position:fixed; top:0; right:0; height:100vh; width:312px; z-index:60;
+    background:#fff; box-shadow:-6px 0 24px rgba(16,24,40,.12);
+    padding:18px; overflow-y:auto; transform:translateX(100%); transition:transform .25s ease;
+  }
+  .settings.open{transform:none;}
+  .settings-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .settings-head h3{margin:0; font-size:16px;}
+  .close-x{border:none; background:#f3f4f6; border-radius:8px; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .close-x svg{width:16px; height:16px; color:#6b7280;}
+  .settings p.tip{font-size:12px; color:#6b7280; margin:0 0 12px;}
+  .grp{font-size:11px; font-weight:700; letter-spacing:.05em; color:#9ca3af; text-transform:uppercase; margin:16px 0 4px;}
+  .crow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; font-size:13px; border-bottom:1px solid #f3f4f6;}
+  .crow span{color:#374151;}
+  .crow input[type=color]{width:42px; height:27px; border:1px solid #d1d5db; border-radius:6px; padding:0; background:#fff; cursor:pointer;}
+  .reset-btn{margin-top:18px; width:100%; padding:10px; border-radius:9px; border:1px solid #d1d5db; background:#fff; font-size:13px; font-weight:600; cursor:pointer;}
+  .reset-btn:hover{background:#f9fafb;}
+  .scrim{position:fixed; inset:0; background:rgba(0,0,0,.18); z-index:55; display:none;}
+  .scrim.open{display:block;}
+</style>
+</head>
+<body>
+
+  <!-- ================= TOOLBAR (excluded from export) ================= -->
+  <div class="toolbar">
+    <button class="tbtn primary" onclick="exportImage('png')"><i data-lucide="image"></i>导出 PNG</button>
+    <button class="tbtn primary" onclick="exportImage('pdf')"><i data-lucide="file-down"></i>导出 PDF</button>
+    <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>颜色设置</button>
+    <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>新增阶段</button>
+    <button class="tbtn" onclick="resetTemplate()" title="清除所有改动，恢复到初始模板"><i data-lucide="rotate-ccw"></i>重置模板</button>
+    <span id="status"></span>
+    <span id="saved" class="saved-ind"><i data-lucide="check"></i>已自动保存</span>
+    <span class="hint">改动会自动保存到本机浏览器 · 点击文字直接编辑 · 选中文字可加粗 / 改色 · 悬停出现 ＋（加内容）和 ×（删除）· 导出仅含图表</span>
+  </div>
+
+  <!-- ================= PAGE ================= -->
+  <div class="page">
+    <div class="board-wrap">
+
+      <!-- ===== #board is the ONLY thing exported ===== -->
+      <div id="board">
+
+        <!-- Banner -->
+        <div class="banner">
+          <div class="banner-left">
+            <i data-lucide="table-2"></i>
+            <div class="banner-title ce">Franchisee Journey</div>
+          </div>
+          <div class="badge">
+            <i data-lucide="calendar-days"></i>
+            <span class="ce">Cool Down: 15 Days</span>
+          </div>
+        </div>
+
+        <div class="columns">
+
+          <!-- ===== STAGE 1 ===== -->
+          <div class="col">
+            <div class="col-head c1">
+              <div class="col-head-top"><span class="num ce">1</span><span class="col-title ce">Account Access</span></div>
+              <div class="col-sub ce">Login &amp; Dashboard</div>
+            </div>
+            <div class="card">
+              <div class="card-row">
+                <div class="card-icon ic-green"><i data-lucide="check"></i></div>
+                <div class="card-title ce">Franchisee Logs Into Account</div>
+              </div>
+              <div class="card-body ce">Franchisee logs into the WordPress platform to access their application statuses.</div>
+              <div class="label-only ce">Platforms:</div>
+              <div class="field"><span class="f-label ce">Platform:</span><span class="f-value ce">WordPress</span></div>
+              <div class="btn btn-primary ce">Login to Account</div>
+              <div class="btn btn-outline"><i data-lucide="list"></i><span class="ce">View All Applications</span></div>
+              <div class="btn btn-outline"><i data-lucide="layout-dashboard"></i><span class="ce">View Dashboards</span></div>
+            </div>
+          </div>
+
+          <!-- ===== STAGE 2 ===== -->
+          <div class="col">
+            <div class="col-head c2">
+              <div class="col-head-top"><span class="num ce">2</span><span class="col-title ce">Application Started</span></div>
+              <div class="col-sub ce">Initial Stage</div>
+            </div>
+            <div class="card">
+              <div class="card-row">
+                <div class="card-icon ic-green"><i data-lucide="target"></i></div>
+                <div class="card-title ce">Application Initiated</div>
+              </div>
+              <div class="card-body ce">Franchisee begins the application process.</div>
+              <div class="field"><span class="f-label ce">Status:</span><span class="f-value ce">Active</span></div>
+              <div class="field"><span class="f-label ce">Next Step:</span><span class="f-value normal ce">Trigger Cool Down</span></div>
+            </div>
+          </div>
+
+          <!-- ===== STAGE 3 ===== -->
+          <div class="col">
+            <div class="col-head c3">
+              <div class="col-head-top"><span class="col-title ce">Cool Down Period</span></div>
+              <div class="col-sub ce">15-Day Timer</div>
+            </div>
+            <div class="card">
+              <div class="card-row">
+                <div class="card-icon ic-blue"><i data-lucide="clock"></i></div>
+                <div class="card-title ce">Trigger Cool Down Period</div>
+              </div>
+              <div class="card-body ce">Mandatory 15-day waiting period to assess application validation.</div>
+              <div class="field"><span class="f-label ce">Timer:</span><span class="f-value ce">15 Days</span></div>
+              <div class="field"><span class="f-label ce">Duration:</span><span class="f-value ce">15 Days</span></div>
+              <div class="field"><span class="f-label ce">Weekly Reset:</span><span class="f-value ce">Mondays</span></div>
+              <div class="btn btn-primary with-icon"><span class="ce">Start Timer</span><i data-lucide="chevron-right"></i></div>
+              <div class="note">
+                <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">NOTIFICATIONS</span></div>
+                <div class="note-body"><span class="accent ce">Franchisee:</span> <span class="ce">Cool down period started</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== STAGE 4 ===== -->
+          <div class="col">
+            <div class="col-head c4">
+              <div class="col-head-top"><span class="num ce">4</span><span class="col-title ce">Actions During Cool Down</span></div>
+              <div class="col-sub ce">Optional / Ad Hoc</div>
+            </div>
+            <div class="card">
+              <div class="card-row">
+                <div class="card-icon ic-indigo"><i data-lucide="user"></i></div>
+                <div class="card-title ce">Pull Updated Profile Data</div>
+              </div>
+              <div class="card-body ce">Fetch updated franchisee profile data to support application validation.</div>
+              <div class="field">
+                <span class="f-label ce">Trigger:</span>
+                <span class="f-value"><span class="f-sub ce">Source:</span> <span class="ce">WordPress</span></span>
+              </div>
+              <div class="btn btn-primary ce">Fetch Latest Profile Data</div>
+              <div class="note">
+                <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">NOTIFICATIONS</span></div>
+                <div class="note-body"><span class="accent ce">Franchisee:</span> <span class="ce">Data pulled from WordPress</span></div>
+              </div>
+              <div class="verify">
+                <div class="verify-title ce">Verification Details:</div>
+                <div class="verify-row"><span class="ce">Verification Details</span></div>
+                <div class="verify-row"><i data-lucide="refresh-cw"></i><span class="ce">WordPress</span></div>
+              </div>
+              <div class="note">
+                <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">NOTIFICATIONS</span></div>
+                <div class="note-body"><span class="accent ce">Franchisee:</span> <span class="ce">Financials verified via WordPress</span></div>
+              </div>
+              <div class="note">
+                <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">NOTIFICATIONS</span></div>
+                <div class="note-body"><span class="accent ce">Franchisee:</span> <span class="ce">Financials verified via WordPress</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== STAGE 5 ===== -->
+          <div class="col">
+            <div class="col-head c5">
+              <div class="col-head-top"><span class="col-title ce">Ready for Submission</span></div>
+              <div class="col-sub ce">Cool Down Complete</div>
+            </div>
+            <div class="card">
+              <div class="card-row">
+                <div class="card-icon ic-orange"><i data-lucide="clipboard-list"></i></div>
+                <div class="card-title ce">Application Under Review</div>
+              </div>
+              <div class="card-body ce">Franchisee evaluates the franchisee's application and makes a decision.</div>
+              <div class="field"><span class="f-label ce">Status:</span><span class="f-value ce">Pending</span></div>
+              <div class="field"><span class="f-label ce">Action Available:</span><span class="f-value ce">Withdraw</span></div>
+              <div class="warn">
+                <div class="warn-head"><i data-lucide="alert-triangle"></i><span class="warn-title ce">Withdraw During Process</span></div>
+                <div class="warn-text ce">Withdraw available during review process</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== STAGE 6 (numbered 7) ===== -->
+          <div class="col">
+            <div class="col-head c6">
+              <div class="col-head-top"><span class="num ce">7</span><span class="col-title ce">Final States</span></div>
+              <div class="col-sub ce">Completion or Withdrawal</div>
+            </div>
+
+            <!-- Card A: Review Complete -->
+            <div class="card">
+              <div class="card-row">
+                <div class="card-icon ic-green"><i data-lucide="check"></i></div>
+                <div class="card-title ce">Review Complete</div>
+              </div>
+              <div class="card-body ce">Franchisee has completed review and made decision.</div>
+              <div class="field"><span class="f-label ce">Status:</span><span class="f-value ce">Completed</span></div>
+              <div class="field"><span class="f-label ce">Decision:</span><span class="f-value ce">Communicated</span></div>
+            </div>
+
+            <!-- Card B: Notifications -->
+            <div class="card notif-card">
+              <div class="notif-head"><i data-lucide="bell"></i><span class="notif-title ce">NOTIFICATIONS</span></div>
+              <div class="note-body" style="margin-top:8px"><span class="accent ce">Franchisee:</span> <span class="ce">Review complete - Decision communicated</span></div>
+              <div class="note-body"><span class="accent ce">Admin:</span> <span class="ce">Application withdrawn notification</span></div>
+            </div>
+
+            <!-- Card C: Application Withdrawn -->
+            <div class="card danger-card">
+              <span class="corner-tag ce">ALWAYS AVAILABLE</span>
+              <div class="card-row">
+                <div class="card-icon ic-red"><i data-lucide="x"></i></div>
+                <div class="card-title ce">Application Withdrawn</div>
+              </div>
+              <div class="card-body ce">Franchisee can withdraw application anytime during process</div>
+              <div class="btn btn-danger ce">Withdraw Application</div>
+              <div class="note">
+                <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">NOTIFICATIONS</span></div>
+                <div class="note-body"><span class="accent ce">Franchisee:</span> <span class="ce">Application withdrawn notification</span></div>
+                <div class="note-body"><span class="accent ce">Admin:</span> <span class="ce">Application withdrawn notification</span></div>
+              </div>
+            </div>
+
+          </div><!-- /col 6 -->
+
+        </div><!-- /columns -->
+      </div><!-- /#board -->
+
+    </div><!-- /board-wrap -->
+  </div><!-- /page -->
+
+  <!-- ================= INLINE FORMAT TOOLBAR (appears on text selection; excluded from export) ================= -->
+  <div class="seltool" id="seltool">
+    <button class="st-btn" id="st-bold" title="加粗 / 取消加粗（也可用 Ctrl/Cmd+B）"><i data-lucide="bold"></i></button>
+    <span class="st-sep"></span>
+    <span id="st-sw-anchor" style="display:flex; gap:7px; align-items:center;"></span>
+    <span class="st-sep"></span>
+    <label class="st-custom" title="自定义文字颜色"><i data-lucide="palette"></i><input type="color" id="st-color" value="#2563eb"></label>
+  </div>
+
+  <!-- Floating "add" button + menu (appears on hovering a card; excluded from export) -->
+  <button class="add-float" id="add-float" type="button" title="向此卡片添加内容"><i data-lucide="plus"></i></button>
+  <div class="add-menu" id="add-menu">
+    <button data-add="note"><i data-lucide="mail"></i>通知框</button>
+    <button data-add="text"><i data-lucide="type"></i>文字</button>
+    <button data-add="field"><i data-lucide="align-left"></i>状态行</button>
+    <button data-add="button"><i data-lucide="square"></i>按钮</button>
+    <button data-add="icon"><i data-lucide="image"></i>图标</button>
+  </div>
+  <div class="icon-picker" id="icon-picker">
+    <div class="ip-grid" id="ip-grid"></div>
+    <div class="ip-colors" id="ip-colors"></div>
+  </div>
+
+  <!-- Floating delete button (appears on hovering a removable block; excluded from export) -->
+  <button class="del-float" id="del-float" type="button" title="删除此项"><i data-lucide="trash-2"></i></button>
+
+  <!-- Undo toast -->
+  <div class="toast" id="toast"><span id="toast-msg">已删除 1 项</span><button id="toast-undo">撤销</button></div>
+
+  <!-- ================= COLOR SETTINGS PANEL (excluded from export) ================= -->
+  <div class="scrim" id="scrim" onclick="toggleSettings(false)"></div>
+  <div class="settings" id="settings">
+    <div class="settings-head">
+      <h3>颜色设置</h3>
+      <button class="close-x" onclick="toggleSettings(false)"><i data-lucide="x"></i></button>
+    </div>
+    <p class="tip">任意改色即时生效。文字内容请直接点击图表上的文字编辑。</p>
+    <div id="color-list"></div>
+    <button class="reset-btn" onclick="resetColors()">恢复默认颜色</button>
+  </div>
+
+<script>
+  // ---- Editable colors: [group, label, cssVar, defaultHex] ----
+  const COLORS = [
+    ['顶栏','顶栏渐变 · 起始','--banner-from','#1d4ed8'],
+    ['顶栏','顶栏渐变 · 结束','--banner-to','#2563eb'],
+    ['顶栏','顶栏文字','--banner-text','#ffffff'],
+    ['顶栏','徽章底色','--badge-bg','#3b82f6'],
+    ['顶栏','徽章文字','--badge-text','#ffffff'],
+    ['阶段表头','① Account Access','--col1','#374151'],
+    ['阶段表头','② Application Started','--col2','#16a34a'],
+    ['阶段表头','③ Cool Down Period','--col3','#2563eb'],
+    ['阶段表头','④ Actions During Cool Down','--col4','#6d28d9'],
+    ['阶段表头','⑤ Ready for Submission','--col5','#f59e0b'],
+    ['阶段表头','⑦ Final States','--col6','#7c3aed'],
+    ['阶段表头','表头文字','--col-text','#ffffff'],
+    ['卡片与文字','页面背景','--page-bg','#eef1f5'],
+    ['卡片与文字','卡片背景','--card-bg','#ffffff'],
+    ['卡片与文字','标题文字','--title-color','#1f2937'],
+    ['卡片与文字','正文文字','--body-color','#6b7280'],
+    ['卡片与文字','强调色 (Franchisee/Admin)','--accent','#2563eb'],
+    ['按钮','主按钮','--btn-primary','#2563eb'],
+    ['按钮','主按钮文字','--btn-primary-text','#ffffff'],
+    ['按钮','撤回按钮 (红)','--btn-danger','#dc2626'],
+    ['提示框','通知框背景','--note-bg','#f9fafb'],
+    ['提示框','警告框背景','--warn-bg','#fffbeb'],
+    ['提示框','撤回卡片背景','--danger-card-bg','#fff5f5'],
+    ['图标','绿色图标','--ic-green','#16a34a'],
+    ['图标','蓝色图标','--ic-blue','#2563eb'],
+    ['图标','紫色图标','--ic-indigo','#6d28d9'],
+    ['图标','橙色图标','--ic-orange','#f59e0b'],
+    ['图标','红色图标','--ic-red','#dc2626'],
+  ];
+
+  const root = document.documentElement;
+
+  // Build the color panel
+  (function buildPanel(){
+    const list = document.getElementById('color-list');
+    let lastGroup = '';
+    COLORS.forEach(([group,label,cssVar,def])=>{
+      if(group !== lastGroup){
+        const h = document.createElement('div');
+        h.className = 'grp'; h.textContent = group;
+        list.appendChild(h); lastGroup = group;
+      }
+      const row = document.createElement('div'); row.className = 'crow';
+      const name = document.createElement('span'); name.textContent = label;
+      const input = document.createElement('input');
+      input.type = 'color'; input.value = def; input.dataset.var = cssVar;
+      input.addEventListener('input', e=>{ root.style.setProperty(cssVar, e.target.value); scheduleSave(); });
+      row.appendChild(name); row.appendChild(input); list.appendChild(row);
+    });
+  })();
+
+  function resetColors(){
+    COLORS.forEach(([,,cssVar,def])=>{
+      root.style.setProperty(cssVar, def);
+      const inp = document.querySelector('#color-list input[data-var="'+cssVar+'"]');
+      if(inp) inp.value = def;
+    });
+    scheduleSave();
+  }
+
+  function toggleSettings(open){
+    document.getElementById('settings').classList.toggle('open', open);
+    document.getElementById('scrim').classList.toggle('open', open);
+  }
+
+  // Make every .ce element click-to-edit
+  document.querySelectorAll('#board .ce').forEach(el=>{
+    el.setAttribute('contenteditable','true');
+    el.setAttribute('spellcheck','false');
+  });
+
+  // Render icons
+  lucide.createIcons();
+
+  // ---------------- Inline formatting toolbar (bold + text color) ----------------
+  // Pops up on text selection inside the chart. Operates on the selected text only.
+  const seltool = document.getElementById('seltool');
+  const boldBtn = document.getElementById('st-bold');
+  const customColor = document.getElementById('st-color');
+  const SWATCHES = ['#111827','#6b7280','#ffffff','#2563eb','#16a34a','#f59e0b','#7c3aed','#dc2626'];
+  let lastRange = null;
+
+  (function buildSwatches(){
+    const anchor = document.getElementById('st-sw-anchor');
+    SWATCHES.forEach(c=>{
+      const b = document.createElement('button');
+      b.className = 'st-sw'; b.style.background = c; b.title = c;
+      b.addEventListener('mousedown', e=>{ e.preventDefault(); applyColor(c); });
+      anchor.appendChild(b);
+    });
+  })();
+
+  function rgbToHex(rgb){
+    const m = (rgb||'').match(/\d+/g);
+    if(!m) return null;
+    return '#' + m.slice(0,3).map(x => (+x).toString(16).padStart(2,'0')).join('');
+  }
+
+  // Returns the active selection range if it is a non-empty selection inside an editable chart element.
+  function editableSelection(){
+    const sel = window.getSelection();
+    if(!sel || sel.rangeCount===0 || sel.isCollapsed) return null;
+    let n = sel.anchorNode; n = (n && n.nodeType===3) ? n.parentElement : n;
+    const board = document.getElementById('board');
+    if(!n || !board.contains(n) || !n.closest('[contenteditable="true"]')) return null;
+    return sel.getRangeAt(0);
+  }
+
+  function hideTool(){ seltool.style.display='none'; }
+
+  function positionTool(rect){
+    seltool.style.display='flex';
+    const tw = seltool.offsetWidth, th = seltool.offsetHeight;
+    let top = rect.top - th - 8;
+    if(top < 8) top = rect.bottom + 8;
+    let left = rect.left + rect.width/2 - tw/2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    seltool.style.top = top + 'px';
+    seltool.style.left = left + 'px';
+  }
+
+  function refreshTool(){
+    const r = editableSelection();
+    if(!r){
+      // keep open while the user is interacting with the color picker
+      if(seltool.contains(document.activeElement)) return;
+      hideTool(); return;
+    }
+    lastRange = r.cloneRange();
+    const rect = r.getBoundingClientRect();
+    if(rect.width===0 && rect.height===0){ hideTool(); return; }
+    positionTool(rect);
+    boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+    const startEl = (r.startContainer.nodeType===3 ? r.startContainer.parentElement : r.startContainer);
+    const hex = rgbToHex(getComputedStyle(startEl).color);
+    if(hex) customColor.value = hex;
+  }
+
+  function restoreSel(){
+    if(!lastRange) return false;
+    try{
+      const node = lastRange.commonAncestorContainer;
+      const host = (node.nodeType===3 ? node.parentElement : node).closest('[contenteditable="true"]');
+      if(host) host.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(lastRange);
+      return true;
+    }catch(e){ return false; }
+  }
+
+  function applyBold(){
+    if(!restoreSel()) return;
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('bold');
+    refreshTool();
+  }
+
+  function applyColor(hex){
+    if(!restoreSel()) return;
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('foreColor', false, hex);
+    if(/^#([0-9a-f]{6})$/i.test(hex)) customColor.value = hex;
+    boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+  }
+
+  boldBtn.addEventListener('mousedown', e=>{ e.preventDefault(); applyBold(); });
+  customColor.addEventListener('mousedown', ()=>{ const r = editableSelection(); if(r) lastRange = r.cloneRange(); });
+  customColor.addEventListener('input', e=> applyColor(e.target.value));
+
+  document.addEventListener('selectionchange', refreshTool);
+  document.addEventListener('scroll', ()=>{ if(seltool.style.display!=='none') refreshTool(); }, true);
+  window.addEventListener('resize', ()=>{ if(seltool.style.display!=='none') refreshTool(); });
+  document.addEventListener('mousedown', e=>{
+    if(seltool.contains(e.target)) return;
+    if(e.target.closest && e.target.closest('#board [contenteditable="true"]')) return;
+    hideTool();
+  });
+
+  // ---------------- Delete blocks (whole containers) with auto-reflow + undo ----------------
+  // Hovering a removable block shows a small red delete button at its corner.
+  // Removing a node lets the flex/normal layout re-align automatically.
+  const board = document.getElementById('board');
+  const delFloat = document.getElementById('del-float');
+  const toast = document.getElementById('toast');
+  const toastMsg = document.getElementById('toast-msg');
+  // Each meaningful piece is its own deletable unit. The element directly under the
+  // cursor (or being edited) is the target; the closest match wins for nested pieces.
+  // Larger containers (whole card, whole stage) are reachable by pointing at their
+  // padding/empty area, where no inner piece sits.
+  const RM_LIST = [
+    '.col', '.card', '.note', '.field', '.label-only', '.btn', '.verify', '.warn',
+    '.badge', '.corner-tag', '.notif-head', '.num', '.col-title', '.col-sub',
+    '.card-icon', '.card-title', '.card-body', '.f-label', '.f-value', '.f-sub',
+    '.note-head', '.note-label', '.note-body', '.notif-title',
+    '.verify-title', '.verify-row', '.warn-title', '.warn-text', '.banner-title'
+  ];
+  const RM_SELECTOR = RM_LIST.map(s => '#board ' + s).join(', ');
+  const undoStack = [];
+  let activeRemovable = null;
+  let toastTimer = null;
+
+  // Detection is selector-based (see RM_SELECTOR), so elements added later are
+  // automatically deletable without any extra bookkeeping.
+
+  // Human-readable label so the tooltip + red outline make the delete scope obvious.
+  function rmLabel(el){
+    if(el.matches('.col')) return '删除整个阶段';
+    if(el.matches('.card')) return '删除整张卡片';
+    if(el.matches('.note, .notif-head, .note-head')) return '删除通知框';
+    if(el.matches('.field, .label-only')) return '删除这一行';
+    if(el.matches('.btn')) return '删除按钮';
+    if(el.matches('.badge, .corner-tag')) return '删除标签';
+    return '删除高亮的这一项';
+  }
+
+  function setActiveRemovable(el){
+    if(el === activeRemovable) return;
+    if(activeRemovable) activeRemovable.classList.remove('rm-active','rm-armed');
+    activeRemovable = el;
+    if(activeRemovable){
+      activeRemovable.classList.add('rm-active');
+      delFloat.title = rmLabel(activeRemovable);
+      const r = activeRemovable.getBoundingClientRect();
+      delFloat.style.top = (r.top + 4) + 'px';
+      delFloat.style.left = (r.right - 23) + 'px';
+      delFloat.classList.add('show');
+    } else {
+      delFloat.classList.remove('show');
+    }
+  }
+
+  // Hover-intent: don't reveal the × the instant the cursor grazes a block.
+  // Wait a beat so passing the mouse across the board doesn't spawn a trail
+  // of delete buttons (the main source of the "abrupt / easy to mis-touch" feel).
+  let hoverTimer = null;
+  function queueRemovable(el){
+    clearTimeout(hoverTimer);
+    if(el === activeRemovable) return;          // already showing for this block
+    if(!el){
+      // Leaving a block: small grace period so you can travel to the button.
+      hoverTimer = setTimeout(() => { if(!delFloat.matches(':hover')) setActiveRemovable(null); }, 180);
+      return;
+    }
+    hoverTimer = setTimeout(() => setActiveRemovable(el), 240);
+  }
+
+  document.addEventListener('pointermove', e => {
+    if(delFloat.contains(e.target)) return;           // over the delete button -> keep it
+    if(!e.target.closest) { queueRemovable(null); return; }
+    if(e.target.closest('.add-float, .add-menu, .icon-picker, .add-ui')) { queueRemovable(null); return; }
+    queueRemovable(e.target.closest(RM_SELECTOR) || null);
+  });
+  // When you click into a piece to edit it, offer to delete that exact piece too.
+  document.addEventListener('focusin', e => {
+    const el = e.target.closest && e.target.closest(RM_SELECTOR);
+    if(el){ clearTimeout(hoverTimer); setActiveRemovable(el); }
+  });
+  document.addEventListener('scroll', () => { if(activeRemovable) setActiveRemovable(null); }, true);
+
+  delFloat.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+  // Hovering the × "arms" the delete: brighten + tint the exact scope so the
+  // user confirms what disappears before clicking.
+  delFloat.addEventListener('mouseenter', () => { clearTimeout(hoverTimer); if(activeRemovable) activeRemovable.classList.add('rm-armed'); });
+  delFloat.addEventListener('mouseleave', () => { if(activeRemovable) activeRemovable.classList.remove('rm-armed'); });
+  delFloat.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    if(activeRemovable) removeBlock(activeRemovable, '已删除 1 项');
+  });
+
+  function removeBlock(el, msg){
+    if(!el) return;
+    undoStack.push({ el, parent: el.parentNode, next: el.nextSibling });
+    el.remove();
+    setActiveRemovable(null);
+    showToast(msg || '已删除 1 项');
+  }
+  function undoRemove(){
+    const last = undoStack.pop();
+    if(!last) return;
+    if(last.next && last.next.parentNode === last.parent) last.parent.insertBefore(last.el, last.next);
+    else last.parent.appendChild(last.el);
+    hideToast();
+  }
+  function showToast(msg){
+    toastMsg.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 6000);
+  }
+  function hideToast(){ toast.classList.remove('show'); clearTimeout(toastTimer); }
+  document.getElementById('toast-undo').addEventListener('click', undoRemove);
+
+  // ---------------- Add content (cards, stages, notes, fields, buttons, icons) ----------------
+  const addFloat = document.getElementById('add-float');
+  const addMenu = document.getElementById('add-menu');
+  const iconPicker = document.getElementById('icon-picker');
+  let currentCard = null;
+  let iconTarget = null;
+
+  function makeEl(html){
+    const t = document.createElement('template'); t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  }
+  function activate(node){            // make new text click-to-edit
+    if(node.classList && node.classList.contains('ce')){ node.setAttribute('contenteditable','true'); node.setAttribute('spellcheck','false'); }
+    node.querySelectorAll('.ce').forEach(e => { e.setAttribute('contenteditable','true'); e.setAttribute('spellcheck','false'); });
+    return node;
+  }
+  function refreshIcons(){ lucide.createIcons(); }
+
+  function buildCard(){
+    return makeEl('<div class="card"><div class="card-row"><div class="card-icon ic-blue"><i data-lucide="circle"></i></div><div class="card-title ce">New Card</div></div><div class="card-body ce">Add your description here.</div></div>');
+  }
+  function buildPiece(type){
+    if(type==='note')   return makeEl('<div class="note"><div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">NOTIFICATIONS</span></div><div class="note-body"><span class="accent ce">Label:</span> <span class="ce">Message text</span></div></div>');
+    if(type==='field')  return makeEl('<div class="field"><span class="f-label ce">Label:</span><span class="f-value ce">Value</span></div>');
+    if(type==='text')   return makeEl('<div class="card-body ce">New text line.</div>');
+    if(type==='button') return makeEl('<div class="btn btn-primary ce">Button</div>');
+    return null;
+  }
+
+  function addCardBar(col){
+    const bar = makeEl('<button class="add-ui add-card-bar" type="button"><i data-lucide="plus"></i>卡片</button>');
+    bar.addEventListener('click', () => addCard(col));
+    col.appendChild(bar);
+  }
+  function addCard(col){
+    const bar = col.querySelector('.add-card-bar');
+    const card = activate(buildCard());
+    if(bar) col.insertBefore(card, bar); else col.appendChild(card);
+    refreshIcons();
+  }
+  function addStage(){
+    const cols = document.querySelector('#board .columns');
+    const n = cols.querySelectorAll('.col').length + 1;
+    const cN = ((n - 1) % 6) + 1;
+    const col = activate(makeEl('<div class="col"><div class="col-head c'+cN+'"><div class="col-head-top"><span class="num ce">'+n+'</span><span class="col-title ce">New Stage</span></div><div class="col-sub ce">Subtitle</div></div></div>'));
+    cols.appendChild(col);
+    addCardBar(col);
+    addCard(col);
+  }
+  function addInto(card, type){
+    if(type === 'icon'){ openIconPickerForCard(card); return; }
+    const node = buildPiece(type);
+    if(!node) return;
+    card.appendChild(activate(node));
+    refreshIcons();
+  }
+
+  // ----- icon picker (shape + color) -----
+  const ICON_NAMES = ['check','x','clock','user','mail','bell','target','clipboard-list',
+    'calendar-days','alert-triangle','refresh-cw','file-text','flag','star','shield-check',
+    'lock','database','server','settings','zap','circle-check','info','thumbs-up','send',
+    'credit-card','map-pin','phone','globe','rocket','heart','trending-up','file-check'];
+  const ICON_BG = ['#16a34a','#2563eb','#6d28d9','#f59e0b','#dc2626','#0891b2','#374151','#db2777'];
+  (function buildIconPicker(){
+    const grid = document.getElementById('ip-grid');
+    ICON_NAMES.forEach(name => {
+      const b = document.createElement('button'); b.title = name; b.innerHTML = '<i data-lucide="'+name+'"></i>';
+      b.addEventListener('mousedown', e => e.preventDefault());
+      b.addEventListener('click', () => { if(iconTarget){ iconTarget.innerHTML = '<i data-lucide="'+name+'"></i>'; refreshIcons(); } });
+      grid.appendChild(b);
+    });
+    const colors = document.getElementById('ip-colors');
+    ICON_BG.forEach(c => {
+      const s = document.createElement('button'); s.className = 'ip-color'; s.style.background = c; s.title = c;
+      s.addEventListener('mousedown', e => e.preventDefault());
+      s.addEventListener('click', () => { if(iconTarget){ iconTarget.classList.remove('ic-green','ic-blue','ic-indigo','ic-orange','ic-red'); iconTarget.style.background = c; } });
+      colors.appendChild(s);
+    });
+  })();
+  function openIconPicker(iconEl){
+    iconTarget = iconEl;
+    iconPicker.classList.add('show');
+    const r = iconEl.getBoundingClientRect();
+    const w = iconPicker.offsetWidth;
+    iconPicker.style.top = (r.bottom + 6) + 'px';
+    iconPicker.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  }
+  function openIconPickerForCard(card){
+    let ic = card.querySelector('.card-icon');
+    if(!ic){
+      let row = card.querySelector('.card-row');
+      if(!row){ row = makeEl('<div class="card-row"></div>'); card.insertBefore(row, card.firstChild); }
+      ic = makeEl('<div class="card-icon ic-blue"><i data-lucide="circle"></i></div>');
+      row.insertBefore(ic, row.firstChild); refreshIcons();
+    }
+    openIconPicker(ic);
+  }
+  document.getElementById('board').addEventListener('click', e => {
+    const ic = e.target.closest && e.target.closest('#board .card-icon');
+    if(ic) openIconPicker(ic);
+  });
+
+  // ----- "add into card" floating button + menu -----
+  document.addEventListener('pointermove', e => {
+    if(addMenu.classList.contains('show')) return;   // freeze target while the menu is open
+    if(addFloat.contains(e.target) || addMenu.contains(e.target) || iconPicker.contains(e.target)) return;
+    if(e.target.closest && e.target.closest('.add-ui')) { addFloat.classList.remove('show'); currentCard = null; return; }
+    const card = e.target.closest && e.target.closest('#board .card');
+    setCurrentCard(card || null);
+  });
+  function setCurrentCard(card){
+    currentCard = card;
+    if(card){
+      const r = card.getBoundingClientRect();
+      addFloat.style.top = (r.bottom - 27) + 'px';
+      addFloat.style.left = (r.right - 27) + 'px';
+      addFloat.classList.add('show');
+    } else {
+      addFloat.classList.remove('show');
+    }
+  }
+  addFloat.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+  addFloat.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    if(!currentCard) return;
+    addMenu.classList.toggle('show');
+    const r = addFloat.getBoundingClientRect();
+    const w = addMenu.offsetWidth;
+    addMenu.style.top = (r.bottom + 6) + 'px';
+    addMenu.style.left = Math.max(8, Math.min(r.left - w + 24, window.innerWidth - w - 8)) + 'px';
+  });
+  addMenu.querySelectorAll('button[data-add]').forEach(b => {
+    b.addEventListener('mousedown', e => e.preventDefault());
+    b.addEventListener('click', () => { if(currentCard) addInto(currentCard, b.dataset.add); addMenu.classList.remove('show'); });
+  });
+  document.addEventListener('mousedown', e => {
+    if(!addMenu.contains(e.target) && !addFloat.contains(e.target)) addMenu.classList.remove('show');
+    if(!iconPicker.contains(e.target) && !(e.target.closest && e.target.closest('#board .card-icon')) && !(e.target.closest && e.target.closest('.add-menu')))
+      iconPicker.classList.remove('show');
+  });
+
+  // ---------------- Autosave + template reset (localStorage) ----------------
+  // Persists the whole board (structure + text) and the colour-theme overrides
+  // so closing the tab no longer loses work. A MutationObserver + an `input`
+  // listener catch every change, so we never have to remember to call save()
+  // from each individual add/delete/edit path.
+  const LS_KEY = 'franchisee-journey-state-v1';
+  const boardEl = document.getElementById('board');
+  const TEMPLATE_HTML = boardEl.innerHTML;   // pristine snapshot (captured before "add card" bars exist)
+  let saveTimer = null, autosaveReady = false;
+
+  // (Re)wire a board's content: make text editable, give each stage an
+  // "add card" bar, render icons. Reused on first load and on reset.
+  function initBoard(){
+    boardEl.querySelectorAll('.ce').forEach(el=>{ el.setAttribute('contenteditable','true'); el.setAttribute('spellcheck','false'); });
+    boardEl.querySelectorAll('.col').forEach(addCardBar);
+    lucide.createIcons();
+  }
+
+  function serializeBoard(){
+    const clone = boardEl.cloneNode(true);
+    clone.querySelectorAll('.add-ui').forEach(n => n.remove());                          // re-injected by initBoard()
+    clone.querySelectorAll('.rm-active, .rm-armed').forEach(n => n.classList.remove('rm-active','rm-armed'));
+    return clone.innerHTML;
+  }
+  function currentColors(){
+    const o = {};
+    COLORS.forEach(([,,cssVar]) => { const v = root.style.getPropertyValue(cssVar).trim(); if(v) o[cssVar] = v; });
+    return o;
+  }
+  function showSaved(){
+    const s = document.getElementById('saved'); if(!s) return;
+    s.classList.add('show'); clearTimeout(showSaved._t);
+    showSaved._t = setTimeout(()=> s.classList.remove('show'), 1400);
+  }
+  function saveState(){
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
+      showSaved();
+    }catch(e){ /* storage disabled (e.g. some file:// contexts) or quota — fail quietly */ }
+  }
+  function scheduleSave(){
+    if(!autosaveReady) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 600);
+  }
+  function applyColors(colors){
+    Object.entries(colors||{}).forEach(([cssVar,val]) => {
+      root.style.setProperty(cssVar, val);
+      const inp = document.querySelector('#color-list input[data-var="'+cssVar+'"]');
+      if(inp && /^#[0-9a-f]{6}$/i.test(val)) inp.value = val;
+    });
+  }
+  function restoreState(){
+    let data;
+    try{ data = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); }catch(e){ return false; }
+    if(!data || !data.html) return false;
+    boardEl.innerHTML = data.html;
+    applyColors(data.colors);
+    return true;
+  }
+  function resetTemplate(){
+    if(!confirm('确定要清除所有改动，恢复到初始模板吗？此操作不可撤销。')) return;
+    try{ localStorage.removeItem(LS_KEY); }catch(e){}
+    autosaveReady = false;
+    boardEl.innerHTML = TEMPLATE_HTML;
+    resetColors();
+    initBoard();
+    autosaveReady = true;
+    saveState();
+  }
+
+  restoreState();   // load saved work if present (colour inputs already built above)
+  initBoard();      // wire whatever is now in the board (saved or template)
+
+  // Connect autosave AFTER initial wiring so setup itself doesn't count as an edit.
+  (function connectAutosave(){
+    const obs = new MutationObserver(scheduleSave);
+    obs.observe(boardEl, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
+    boardEl.addEventListener('input', scheduleSave);
+    // Flush any pending debounce on the way out so the last keystroke is never lost.
+    window.addEventListener('beforeunload', () => { if(autosaveReady){ clearTimeout(saveTimer); saveState(); } });
+    autosaveReady = true;
+  })();
+
+  // ---------------- Export (captures ONLY #board) ----------------
+  function pageBg(){
+    return getComputedStyle(root).getPropertyValue('--page-bg').trim() || '#eef1f5';
+  }
+  async function snapshot(){
+    const board = document.getElementById('board');
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    document.body.classList.add('exporting');
+    document.getElementById('seltool').style.display='none';
+    document.getElementById('add-menu').classList.remove('show');
+    document.getElementById('icon-picker').classList.remove('show');
+    document.getElementById('add-float').classList.remove('show');
+    if(typeof setActiveRemovable === 'function') setActiveRemovable(null);
+    const canvas = await html2canvas(board, {
+      scale:2, backgroundColor: pageBg(), useCORS:true, logging:false,
+      windowWidth: board.scrollWidth, windowHeight: board.scrollHeight
+    });
+    document.body.classList.remove('exporting');
+    return canvas;
+  }
+  async function exportImage(kind){
+    const status = document.getElementById('status');
+    status.textContent = '导出中…';
+    try{
+      const canvas = await snapshot();
+      if(kind === 'png'){
+        const a = document.createElement('a');
+        a.download = 'franchisee-journey.png';
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      } else {
+        const { jsPDF } = window.jspdf;
+        const w = canvas.width, h = canvas.height;
+        const pdf = new jsPDF({ orientation: w >= h ? 'landscape' : 'portrait', unit:'px', format:[w,h] });
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
+        pdf.save('franchisee-journey.pdf');
+      }
+      status.textContent = '已导出 ✓';
+    }catch(err){
+      console.error(err);
+      status.textContent = '导出失败，请重试';
+    }
+    setTimeout(()=> status.textContent = '', 2500);
+  }
+</script>
+</body>
+</html>
