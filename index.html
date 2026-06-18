@@ -1107,8 +1107,7 @@
       // ponytail: full state in the hash, ceiling ~tens of KB. Huge boards make
       // long links — use "导出 JSON" instead then.
       const url=location.origin+location.pathname+'#s='+enc;
-      await navigator.clipboard.writeText(url);
-      history.replaceState(null,'','#s='+enc);
+      await navigator.clipboard.writeText(url);   // clipboard only; keep the working URL clean
       status.textContent = enc.length>30000 ? '链接已复制（较长，建议改用 JSON 文件）' : '分享链接已复制 ✓';
     }catch(e){ console.error(e); status.textContent='生成链接失败'; }
     setTimeout(()=>status.textContent='',3000);
