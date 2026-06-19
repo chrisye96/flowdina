@@ -1,10 +1,10 @@
-.inspector { width: 280px; flex: none; border-left: 1px solid #e5e7eb; background: #fff; overflow-y: auto; padding: 14px 16px; }
+.inspector { width: 280px; flex: none; border-left: 1px solid var(--chrome-border); background: var(--chrome-surface); overflow-y: auto; padding: 14px 16px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.title { font-size: 14px; font-weight: 600; color: #1f2937; }
-.reset { font-size: 12px; color: #6b7280; background: transparent; border: 1px solid #d1d5db; border-radius: 7px; padding: 4px 9px; cursor: pointer; }
-.reset:hover { background: #f9fafb; }
-.tip { font-size: 12px; color: #9ca3af; margin: 6px 0 4px; line-height: 1.5; }
+.title { font-size: 14px; font-weight: 600; color: var(--chrome-text); }
+.reset { font-size: 12px; color: var(--chrome-text-muted); background: transparent; border: 1px solid var(--chrome-control); border-radius: 7px; padding: 4px 9px; cursor: pointer; }
+.reset:hover { background: var(--chrome-hover); }
+.tip { font-size: 12px; color: var(--chrome-text-faint); margin: 6px 0 4px; line-height: 1.5; }
 .group { margin-top: 14px; }
-.groupName { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: #9ca3af; margin-bottom: 4px; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 13px; color: #374151; border-bottom: 1px solid #f3f4f6; }
-.row input[type="color"] { width: 42px; height: 26px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0; background: #fff; cursor: pointer; }
+.groupName { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--chrome-text-faint); margin-bottom: 4px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 13px; color: var(--chrome-text-soft); border-bottom: 1px solid var(--chrome-divider); }
+.row input[type="color"] { width: 42px; height: 26px; border: 1px solid var(--chrome-control); border-radius: 6px; padding: 0; background: #fff; cursor: pointer; }
