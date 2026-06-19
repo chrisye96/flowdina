@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import type { Board } from "@/lib/board";
 import type { Path } from "@/lib/path";
 import { themeVars, tokenColor } from "@/lib/theme";
@@ -10,10 +10,62 @@ import Editable from "./Editable";
 import Ico from "./Ico";
 import s from "./board.module.css";
 
-export default function BoardView({ board, onEdit }: { board: Board; onEdit?: (p: Path, v: string) => void }) {
+export default function BoardView({
+  board,
+  onEdit,
+  connect = false,
+  onConnect,
+  selectedEdge = null,
+  onSelectEdge,
+  onDeleteEdge,
+}: {
+  board: Board;
+  onEdit?: (p: Path, v: string) => void;
+  // Connector editing (editor only). When omitted the board is read-only.
+  connect?: boolean;
+  onConnect?: (from: string, to: string) => void;
+  selectedEdge?: string | null;
+  onSelectEdge?: (id: string | null) => void;
+  onDeleteEdge?: (id: string) => void;
+}) {
   const { theme } = board;
   const flow = board.mode === "flow";
   const boardRef = useRef<HTMLDivElement>(null);
+  // The pending source lives in a ref, not state: between the two clicks nothing
+  // re-renders, so toggling the highlight class directly survives until the edge lands.
+  const pendingRef = useRef<string | null>(null);
+
+  const clearPending = () => {
+    if (pendingRef.current) {
+      boardRef.current?.querySelector(`[data-node-id="${CSS.escape(pendingRef.current)}"]`)?.classList.remove(s.connectSource);
+      pendingRef.current = null;
+    }
+  };
+  // Leaving connect mode abandons any half-drawn edge.
+  useEffect(() => {
+    if (!connect) clearPending();
+  }, [connect]);
+
+  const onBoardClick = (ev: MouseEvent<HTMLDivElement>) => {
+    if (connect && onConnect) {
+      const el = (ev.target as HTMLElement).closest("[data-node-id]");
+      const id = el?.getAttribute("data-node-id") ?? null;
+      if (!id) return clearPending(); // clicked empty space → cancel
+      if (!pendingRef.current) {
+        pendingRef.current = id;
+        el!.classList.add(s.connectSource);
+      } else if (pendingRef.current !== id) {
+        const from = pendingRef.current;
+        clearPending();
+        onConnect(from, id);
+      } else {
+        clearPending(); // clicked the source again → cancel
+      }
+      return;
+    }
+    // Clicking empty canvas (edge clicks stopPropagation) clears the selection.
+    onSelectEdge?.(null);
+  };
 
   const E = (text: string, ...keys: (string | number)[]): ReactNode =>
     onEdit ? <Editable value={text} onChange={(v) => onEdit(keys, v)} /> : <>{text}</>;
@@ -53,7 +105,12 @@ export default function BoardView({ board, onEdit }: { board: Board; onEdit?: (p
   });
 
   return (
-    <div ref={boardRef} className={`${s.board} ${flow ? s.flowMode : ""}`} style={themeVars(theme)}>
+    <div
+      ref={boardRef}
+      className={`${s.board} ${flow ? s.flowMode : ""} ${connect ? s.connect : ""}`}
+      style={themeVars(theme)}
+      onClick={onBoardClick}
+    >
       {board.banner && (
         <div className={s.banner}>
           <div className={s.bannerLeft}>
@@ -71,7 +128,7 @@ export default function BoardView({ board, onEdit }: { board: Board; onEdit?: (p
 
       {flow ? <div className={s.flowCol}>{sections}</div> : sections}
 
-      <EdgeLayer edges={board.edges} boardRef={boardRef} theme={theme} />
+      <EdgeLayer edges={board.edges} boardRef={boardRef} theme={theme} selected={selectedEdge} onSelect={onSelectEdge} onDelete={onDeleteEdge} />
     </div>
   );
 }

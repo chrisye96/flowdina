@@ -64,3 +64,10 @@
 .cardDecision { border: 2px solid #a855f7; background: #faf5ff; }
 .cardStateBlue { border: 2px solid #3b82f6; }
 .cardStateGreen { border: 2px solid #16a34a; background: #f0fdf4; }
+
+/* Connect mode: every block is a click target; text editing is suspended so the
+   click registers the node instead of focusing a caret. */
+.connect [data-node-id] { cursor: crosshair; }
+.connect [data-node-id]:hover { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.connect [contenteditable] { pointer-events: none; }
+.connectSource { outline: 2px solid var(--accent); outline-offset: 2px; }

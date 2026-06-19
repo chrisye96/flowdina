@@ -18,6 +18,8 @@
 .primary { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 13px; border: none; border-radius: 8px; background: #534ab7; color: #eeedfe; cursor: pointer; font-weight: 600; }
 .primary:hover { background: #463c9e; }
 
+.toggleOn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 11px; border: 1px solid #c7c2f0; border-radius: 8px; background: #eef0fb; color: #534ab7; cursor: pointer; font-weight: 600; }
+
 .status { font-size: 12.5px; color: #16a34a; font-weight: 600; }
 
 .canvas { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; align-items: flex-start; }
