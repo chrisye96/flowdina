@@ -329,7 +329,7 @@
      pills, decision/state styling, a bulleted list and an assignment chip.
      ponytail: hand-structured layout (spine + one branch + one merge). No graph
      auto-layout engine until charts become arbitrary. */
-  .flow{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:34px; }
+  .flow{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:52px; }
   .flow .card{ width:100%; margin-bottom:0; }
   .fc-card{ overflow:hidden; }
   .fc-pill{ display:inline-flex; align-items:center; gap:8px; padding:11px 22px; border-radius:999px; color:#fff; font-weight:700; font-size:14px; }
@@ -350,12 +350,13 @@
   .fc-chip{ display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:6px 10px; border-radius:7px; background:#eef2ff; color:#4f46e5; font-size:11px; font-weight:600; }
   .fc-chip svg{ width:13px; height:13px; }
   .fc-branch{ display:flex; gap:14px; align-items:flex-start; width:100%; }
-  .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:34px; }
-  .fc-merge{ font-size:12px; color:#475569; font-weight:600; margin-top:8px; text-align:center; }
+  .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:52px; }
+  /* a caption that sits on a connector: opaque background + above the line so the line reads as passing behind it (label-on-wire) */
+  .fc-merge{ position:relative; font-size:12px; color:#475569; font-weight:600; text-align:center; background:var(--page-bg); padding:5px 16px; border-radius:6px; }
 
   /* ---------- Connectors: block-to-block editable edges ---------- */
   #board{ position:relative; }
-  #edge-layer{ position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:2; }
+  #edge-layer{ position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:0; }   /* behind cards: lines tuck behind content, arrowheads sit in the gaps */
   .edge-path{ fill:none; stroke:#64748b; stroke-width:2; pointer-events:stroke; cursor:pointer; }
   .edge-head{ fill:#64748b; pointer-events:none; }
   .edge.selected .edge-path{ stroke:#2563eb; stroke-width:3; }
