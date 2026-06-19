@@ -153,6 +153,7 @@ export default function EdgeLayer({
                   <g
                     style={{ pointerEvents: interactive ? "auto" : "none", cursor: interactive ? "move" : "default" }}
                     onPointerDown={(ev) => startLabelDrag(ev, p.id, off.dx, off.dy)}
+                    onClick={(ev) => ev.stopPropagation()}
                   >
                     {moved && <line x1={p.mid.x} y1={p.mid.y} x2={lx} y2={ly} stroke={stroke} strokeWidth={1} strokeDasharray="2 3" opacity={0.5} />}
                     <rect x={lx - lw / 2} y={ly - 8} width={lw} height={16} rx={4} fill="var(--page-bg)" />
