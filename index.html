@@ -329,10 +329,9 @@
      pills, decision/state styling, a bulleted list and an assignment chip.
      ponytail: hand-structured layout (spine + one branch + one merge). No graph
      auto-layout engine until charts become arbitrary. */
-  .flow{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; align-items:center; }
+  .flow{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:34px; }
   .flow .card{ width:100%; margin-bottom:0; }
   .fc-card{ overflow:hidden; }
-  .fc-arrow{ width:22px !important; height:22px !important; color:#94a3b8; margin:8px 0; }
   .fc-pill{ display:inline-flex; align-items:center; gap:8px; padding:11px 22px; border-radius:999px; color:#fff; font-weight:700; font-size:14px; }
   .fc-pill svg{ width:18px; height:18px; }
   .fc-pill-blue{ background:#2563eb; } .fc-pill-red{ background:#dc2626; }
@@ -350,10 +349,8 @@
   .fc-disclaimer{ background:#fef2f2; border-color:#fecaca; }
   .fc-chip{ display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:6px 10px; border-radius:7px; background:#eef2ff; color:#4f46e5; font-size:11px; font-weight:600; }
   .fc-chip svg{ width:13px; height:13px; }
-  .fc-branch{ display:flex; gap:14px; align-items:flex-start; width:100%; padding-top:20px; position:relative; }
-  .fc-branch::before{ content:''; position:absolute; top:0; left:16.66%; right:16.66%; border-top:2px solid #cbd5e1; }
-  .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; position:relative; }
-  .fc-col::before{ content:''; position:absolute; top:-20px; left:50%; height:20px; border-left:2px solid #cbd5e1; }
+  .fc-branch{ display:flex; gap:14px; align-items:flex-start; width:100%; }
+  .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:34px; }
   .fc-merge{ font-size:12px; color:#475569; font-weight:600; margin-top:8px; text-align:center; }
 
   /* ---------- Connectors: block-to-block editable edges ---------- */
@@ -598,10 +595,9 @@
   <template id="flow-tpl">
     <div class="flow">
 
-      <div class="fc-pill fc-pill-blue"><i data-lucide="play"></i><span class="ce">Application Received</span></div>
-      <i data-lucide="arrow-down" class="fc-arrow"></i>
+      <div class="fc-pill fc-pill-blue" data-cid="appReceived"><i data-lucide="play"></i><span class="ce">Application Received</span></div>
 
-      <div class="card fc-card">
+      <div class="card fc-card" data-cid="step1">
         <div class="fc-header fc-h-orange ce">STEP 1: ACCEPT APPLICATION - UNDER REVIEW</div>
         <div class="card-row"><div class="card-icon" style="background:#f59e0b"><i data-lucide="clock"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
         <ul class="fc-list">
@@ -613,9 +609,8 @@
         </ul>
         <div class="fc-band ce">Timeline: 7 Business Days Review Period</div>
       </div>
-      <i data-lucide="arrow-down" class="fc-arrow"></i>
 
-      <div class="card fc-card fc-decision">
+      <div class="card fc-card fc-decision" data-cid="decision">
         <div class="card-row"><div class="card-icon" style="background:#a855f7"><i data-lucide="zap"></i></div><div class="card-title ce" style="color:#7c3aed">DECISION POINT</div></div>
         <div class="fc-sub ce">After 7-Day Review Period</div>
         <div class="fc-sub ce">Franchisor chooses next action</div>
@@ -625,11 +620,10 @@
           <div class="fc-chip"><i data-lucide="message-circle"></i><span class="ce">Sana to share email content for auto-decline notification</span></div>
         </div>
       </div>
-      <i data-lucide="arrow-down" class="fc-arrow"></i>
 
       <div class="fc-branch">
         <div class="fc-col">
-          <div class="card fc-card">
+          <div class="card fc-card" data-cid="step2">
             <div class="fc-header fc-h-blue ce">STEP 2: FINANCIAL CHECK</div>
             <div class="card-row"><div class="card-icon" style="background:#2563eb"><i data-lucide="dollar-sign"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
             <ul class="fc-list">
@@ -653,14 +647,12 @@
               <div class="note-body ce"><b>On Successful Verification:</b> button label changes to "Verification Complete - View Details"; opens franchisee financial details in a new window.</div>
             </div>
           </div>
-          <i data-lucide="arrow-down" class="fc-arrow"></i>
-          <div class="card fc-card fc-state-blue">
+          <div class="card fc-card fc-state-blue" data-cid="awaiting">
             <div class="card-row"><div class="card-icon" style="background:#3b82f6"><i data-lucide="hourglass"></i></div><div class="card-title ce">Awaiting Financial Submission</div></div>
             <div class="fc-sub ce">Franchisee has 5 business days to submit</div>
             <div class="fc-sub ce">WordPress &#8594; API &#8594; Dashboard sync</div>
           </div>
-          <i data-lucide="arrow-down" class="fc-arrow"></i>
-          <div class="card fc-card fc-state-green">
+          <div class="card fc-card fc-state-green" data-cid="financialDone">
             <div class="card-row"><div class="card-icon" style="background:#16a34a"><i data-lucide="check"></i></div><div class="card-title ce">Financial Check Completed</div></div>
             <div class="fc-sub ce">Auto-synced from WordPress via API</div>
             <div class="fc-sub ce">Status visible on dashboard</div>
@@ -668,7 +660,7 @@
         </div>
 
         <div class="fc-col">
-          <div class="card fc-card">
+          <div class="card fc-card" data-cid="step3">
             <div class="fc-header fc-h-green ce">STEP 3: APPLICATION APPROVED</div>
             <div class="card-row"><div class="card-icon" style="background:#16a34a"><i data-lucide="circle-check"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
             <ul class="fc-list">
@@ -685,7 +677,7 @@
         </div>
 
         <div class="fc-col">
-          <div class="card fc-card danger-card">
+          <div class="card fc-card danger-card" data-cid="step4">
             <div class="fc-header fc-h-red ce">STEP 4: APPLICATION DECLINED</div>
             <div class="card-row"><div class="card-icon" style="background:#dc2626"><i data-lucide="circle-x"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
             <ul class="fc-list"><li class="ce">Click "Decline" button</li></ul>
@@ -694,15 +686,13 @@
               <div class="fc-chip"><i data-lucide="message-circle"></i><span class="ce">Sana to share email content</span></div>
             </div>
           </div>
-          <i data-lucide="arrow-down" class="fc-arrow"></i>
-          <div class="fc-pill fc-pill-red"><i data-lucide="ban"></i><span class="ce">Process Ends</span></div>
+          <div class="fc-pill fc-pill-red" data-cid="processEnds"><i data-lucide="ban"></i><span class="ce">Process Ends</span></div>
         </div>
       </div>
 
       <div class="fc-merge ce">Both approval paths converge here</div>
-      <i data-lucide="arrow-down" class="fc-arrow"></i>
 
-      <div class="card fc-card">
+      <div class="card fc-card" data-cid="postApproval">
         <div class="fc-header fc-h-green ce">POST-APPROVAL STATE</div>
         <div class="card-row"><div class="card-icon" style="background:#16a34a"><i data-lucide="circle-check"></i></div><div class="card-title ce">Application Status: APPROVED</div></div>
         <ul class="fc-list">
@@ -1285,7 +1275,7 @@
     autosaveReady = false;
     boardEl.innerHTML = document.getElementById('flow-tpl').innerHTML;
     resetColors();
-    edges = [];
+    edges = flowEdges();
     initBoard();
     autosaveReady = true;
     saveState();
@@ -1343,6 +1333,16 @@
 
   function boardData(){ return { v:1, html: serializeBoard(), colors: currentColors(), edges: validEdges() }; }
   function validEdges(){ return edges.filter(e => blockById(e.from) && blockById(e.to)); }
+  function flowEdges(){    // the franchise approval flow's predefined connections (replaces the old static arrows)
+    const mk=(from,to)=>({ id:'e'+(++edgeSeq), from, to, line:'straight', arrow:'end' });
+    return [
+      mk('appReceived','step1'), mk('step1','decision'),
+      mk('decision','step2'), mk('decision','step3'), mk('decision','step4'),
+      mk('step4','processEnds'),
+      mk('step2','awaiting'), mk('awaiting','financialDone'),
+      mk('financialDone','postApproval'), mk('step3','postApproval')
+    ];
+  }
   function blockId(el){ if(!el.dataset.cid) el.dataset.cid = 'b'+(++cidSeq); return el.dataset.cid; }
   function blockById(id){ try{ return boardEl.querySelector('[data-cid="'+CSS.escape(id)+'"]'); }catch(e){ return null; } }
   function seedCidSeq(){ let m=0; boardEl.querySelectorAll('[data-cid]').forEach(el=>{ const n=+(''+el.dataset.cid).replace(/\D/g,''); if(n>m) m=n; }); cidSeq=m; }
