@@ -355,6 +355,25 @@
   .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; position:relative; }
   .fc-col::before{ content:''; position:absolute; top:-20px; left:50%; height:20px; border-left:2px solid #cbd5e1; }
   .fc-merge{ font-size:12px; color:#475569; font-weight:600; margin-top:8px; text-align:center; }
+
+  /* ---------- Connectors: block-to-block editable edges ---------- */
+  #board{ position:relative; }
+  #edge-layer{ position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:2; }
+  .edge-path{ fill:none; stroke:#64748b; stroke-width:2; pointer-events:stroke; cursor:pointer; }
+  .edge-head{ fill:#64748b; pointer-events:none; }
+  .edge.selected .edge-path{ stroke:#2563eb; stroke-width:3; }
+  .edge.selected .edge-head{ fill:#2563eb; }
+  .connect-src{ outline:2px solid #2563eb !important; outline-offset:2px; }
+  body.connect-mode #board .card, body.connect-mode #board .fc-pill, body.connect-mode #board .col,
+  body.connect-mode #board [contenteditable]{ cursor:crosshair; }
+  .edge-del{ position:fixed; z-index:85; display:none; width:22px; height:22px; border:none; border-radius:6px;
+    background:#dc2626; color:#fff; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 7px rgba(0,0,0,.22); }
+  .edge-del.show{ display:flex; }
+  .edge-del svg{ width:13px; height:13px; }
+  body.exporting #edge-layer .edge.selected .edge-path{ stroke:#64748b; }
+  body.exporting #edge-layer .edge.selected .edge-head{ fill:#64748b; }
+  body.exporting .edge-del{ display:none !important; }
+  body.exporting .connect-src{ outline:none !important; }
 </style>
 </head>
 <body>
@@ -371,6 +390,7 @@
     <button class="tbtn" onclick="document.getElementById('import-json').click()" title="从 JSON 文件载入图表"><i data-lucide="upload"></i>导入 JSON</button>
     <input type="file" id="import-json" accept="application/json,.json" style="display:none">
     <button class="tbtn" onclick="copyShareLink()" title="复制包含当前图表的分享链接"><i data-lucide="link"></i>分享链接</button>
+    <button class="tbtn" id="connect-btn" onclick="toggleConnect()" title="连接模式：点两个方块来连线"><i data-lucide="spline"></i>连接</button>
     <span id="status"></span>
     <span id="saved" class="saved-ind"><i data-lucide="check"></i>已自动保存</span>
     <span class="hint">改动会自动保存到本机浏览器 · 点击文字直接编辑 · 选中文字可加粗 / 改色 · 悬停出现 ＋（加内容）和 ×（删除）· 导出仅含图表</span>
@@ -712,6 +732,9 @@
 
   <!-- Floating delete button (appears on hovering a removable block; excluded from export) -->
   <button class="del-float" id="del-float" type="button" title="删除此项"><i data-lucide="trash-2"></i></button>
+
+  <!-- Floating delete for a selected connector edge -->
+  <button class="edge-del" id="edge-del" type="button" title="删除连线"><i data-lucide="trash-2"></i></button>
 
   <!-- Undo toast -->
   <div class="toast" id="toast"><span id="toast-msg">已删除 1 项</span><button id="toast-undo">撤销</button></div>
@@ -1181,11 +1204,14 @@
     boardEl.querySelectorAll('.ce').forEach(el=>{ el.setAttribute('contenteditable','true'); el.setAttribute('spellcheck','false'); });
     boardEl.querySelectorAll('.col').forEach(addCardBar);
     lucide.createIcons();
+    seedCidSeq(); renderEdges();
   }
 
   function serializeBoard(){
     const clone = boardEl.cloneNode(true);
     clone.querySelectorAll('.add-ui').forEach(n => n.remove());                          // re-injected by initBoard()
+    clone.querySelectorAll('#edge-layer').forEach(n => n.remove());                       // edges persist as data, not markup
+    clone.querySelectorAll('.connect-src').forEach(n => n.classList.remove('connect-src'));
     clone.querySelectorAll('.rm-active, .rm-armed').forEach(n => n.classList.remove('rm-active','rm-armed'));
     return clone.innerHTML;
   }
@@ -1201,7 +1227,7 @@
   }
   function saveState(){
     try{
-      localStorage.setItem(LS_KEY, JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
+      localStorage.setItem(LS_KEY, JSON.stringify(boardData()));
       showSaved();
     }catch(e){ /* storage disabled (e.g. some file:// contexts) or quota — fail quietly */ }
   }
@@ -1223,6 +1249,7 @@
     if(!data || !data.html) return false;
     boardEl.innerHTML = data.html;
     applyColors(data.colors);
+    edges = data.edges || [];
     return true;
   }
   function resetTemplate(){
@@ -1231,6 +1258,7 @@
     autosaveReady = false;
     boardEl.innerHTML = TEMPLATE_HTML;
     resetColors();
+    edges = [];
     initBoard();
     autosaveReady = true;
     saveState();
@@ -1242,6 +1270,7 @@
     autosaveReady = false;
     boardEl.innerHTML = document.getElementById('flow-tpl').innerHTML;
     resetColors();
+    edges = [];
     initBoard();
     autosaveReady = true;
     saveState();
@@ -1271,7 +1300,7 @@
   async function copyShareLink(){
     const status=document.getElementById('status'); status.textContent='生成链接…';
     try{
-      const enc=await gzip(JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
+      const enc=await gzip(JSON.stringify(boardData()));
       // ponytail: full state in the hash, ceiling ~tens of KB. Huge boards make
       // long links — use "导出 JSON" instead then.
       const url=location.origin+location.pathname+'#s='+enc;
@@ -1285,9 +1314,125 @@
     try{
       const data=JSON.parse(await gunzip(m[1]));
       if(!data || typeof data.html!=='string') return false;
-      boardEl.innerHTML=safeBoardHtml(data.html); applyColors(data.colors); return true;
+      boardEl.innerHTML=safeBoardHtml(data.html); applyColors(data.colors); edges = data.edges || []; return true;
     }catch(e){ console.error(e); return false; }
   }
+
+  // ================= Connectors: block-to-block editable edges (Slice 1) =================
+  const svgns = 'http://www.w3.org/2000/svg';
+  const CONNECT_SELECTOR = '#board .card, #board .fc-pill, #board .col';
+  let edges = [];                 // {id, from, to, line:'straight', arrow:'end'}
+  let edgeSeq = 0, cidSeq = 0;
+  let connectMode = false, connectSrc = null, selectedEdge = null, renderRAF = 0;
+
+  function boardData(){ return { v:1, html: serializeBoard(), colors: currentColors(), edges: validEdges() }; }
+  function validEdges(){ return edges.filter(e => blockById(e.from) && blockById(e.to)); }
+  function blockId(el){ if(!el.dataset.cid) el.dataset.cid = 'b'+(++cidSeq); return el.dataset.cid; }
+  function blockById(id){ try{ return boardEl.querySelector('[data-cid="'+CSS.escape(id)+'"]'); }catch(e){ return null; } }
+  function seedCidSeq(){ let m=0; boardEl.querySelectorAll('[data-cid]').forEach(el=>{ const n=+(''+el.dataset.cid).replace(/\D/g,''); if(n>m) m=n; }); cidSeq=m; }
+  function isEdgeMutation(m){
+    const el = m.target.nodeType===1 ? m.target : m.target.parentElement;
+    if(el && (el.id==='edge-layer' || el.closest('#edge-layer'))) return true;
+    const nodes=[...m.addedNodes, ...m.removedNodes];
+    return nodes.length>0 && nodes.every(n => n.id==='edge-layer');
+  }
+
+  function ensureEdgeLayer(){
+    let svg = boardEl.querySelector('#edge-layer');
+    if(!svg){ svg = document.createElementNS(svgns,'svg'); svg.id='edge-layer'; boardEl.insertBefore(svg, boardEl.firstChild); }
+    return svg;
+  }
+  function rectIn(el, b){ const r=el.getBoundingClientRect(); return { x:r.left-b.left+r.width/2, y:r.top-b.top+r.height/2, w:r.width, h:r.height }; }
+  function borderPt(c, tx, ty){
+    const dx=tx-c.x, dy=ty-c.y; if(!dx && !dy) return {x:c.x,y:c.y};
+    const s = 1/Math.max(Math.abs(dx)/(c.w/2), Math.abs(dy)/(c.h/2));
+    return { x:c.x+dx*s, y:c.y+dy*s };
+  }
+  function renderEdges(){
+    const svg = ensureEdgeLayer();
+    svg.setAttribute('width', boardEl.scrollWidth); svg.setAttribute('height', boardEl.scrollHeight);
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    const b = boardEl.getBoundingClientRect();
+    edges.forEach(e => {
+      const A=blockById(e.from), B=blockById(e.to); if(!A||!B) return;   // dangling (block gone) -> skip
+      const ca=rectIn(A,b), cb=rectIn(B,b);
+      const p1=borderPt(ca,cb.x,cb.y), p2=borderPt(cb,ca.x,ca.y);
+      const g=document.createElementNS(svgns,'g'); g.setAttribute('class','edge'+(e===selectedEdge?' selected':'')); g.dataset.eid=e.id;
+      const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d','M'+p1.x+' '+p1.y+' L'+p2.x+' '+p2.y);
+      g.appendChild(path);
+      drawHead(g, p1, p2, e.arrow);
+      svg.appendChild(g);
+    });
+  }
+  function drawHead(g, from, to, arrow){
+    if(arrow==='none') return;
+    const a=Math.atan2(to.y-from.y, to.x-from.x);
+    tri(g,to,a); if(arrow==='both') tri(g,from,a+Math.PI);
+  }
+  function tri(g, tip, a){
+    const L=11, W=6, bx=tip.x-L*Math.cos(a), by=tip.y-L*Math.sin(a);
+    const p=document.createElementNS(svgns,'polygon'); p.setAttribute('class','edge-head');
+    p.setAttribute('points', tip.x+' '+tip.y+' '+(bx-W*Math.sin(a))+' '+(by+W*Math.cos(a))+' '+(bx+W*Math.sin(a))+' '+(by-W*Math.cos(a)));
+    g.appendChild(p);
+  }
+  function scheduleRender(){ if(renderRAF) return; renderRAF=requestAnimationFrame(()=>{ renderRAF=0; renderEdges(); if(selectedEdge) positionEdgeDel(); }); }
+
+  function selectEdge(id){ selectedEdge = edges.find(x=>x.id===id)||null; renderEdges(); positionEdgeDel(); }
+  function deselectEdge(){ if(!selectedEdge) return; selectedEdge=null; renderEdges(); document.getElementById('edge-del').classList.remove('show'); }
+  function positionEdgeDel(){
+    const del=document.getElementById('edge-del');
+    const path = selectedEdge && boardEl.querySelector('.edge[data-eid="'+selectedEdge.id+'"] .edge-path');
+    if(!path){ del.classList.remove('show'); return; }
+    const r=path.getBoundingClientRect();
+    del.style.left=(r.left+r.width/2-11)+'px'; del.style.top=(r.top+r.height/2-11)+'px'; del.classList.add('show');
+  }
+  function deleteSelectedEdge(){ if(!selectedEdge) return; edges=edges.filter(x=>x!==selectedEdge); selectedEdge=null; renderEdges(); document.getElementById('edge-del').classList.remove('show'); scheduleSave(); }
+
+  function clearSrc(){ boardEl.querySelectorAll('.connect-src').forEach(el=>el.classList.remove('connect-src')); }
+  function setStatus(msg){ document.getElementById('status').textContent = msg||''; }
+  function toggleConnect(){
+    connectMode=!connectMode; connectSrc=null; clearSrc();
+    document.body.classList.toggle('connect-mode', connectMode);
+    document.getElementById('connect-btn').classList.toggle('primary', connectMode);
+    if(connectMode){ deselectEdge(); setStatus('连接模式：点起点方块，再点终点方块（再次点“连接”退出）'); }
+    else setStatus('');
+  }
+
+  // Pick blocks in connect mode. mousedown + capture so the click does not start text editing.
+  boardEl.addEventListener('mousedown', e => {
+    if(!connectMode) return;
+    const block = e.target.closest(CONNECT_SELECTOR);
+    if(!block) return;
+    e.preventDefault(); e.stopPropagation();
+    if(!connectSrc){ connectSrc=block; block.classList.add('connect-src'); setStatus('再点终点方块'); return; }
+    if(block===connectSrc){ clearSrc(); connectSrc=null; setStatus('点起点方块'); return; }
+    const from=blockId(connectSrc), to=blockId(block);
+    if(!edges.some(x=>x.from===from && x.to===to)) edges.push({ id:'e'+(++edgeSeq), from, to, line:'straight', arrow:'end' });
+    clearSrc(); connectSrc=null; renderEdges(); scheduleSave(); setStatus('已连接 ✓ 继续连，或再次点“连接”退出');
+  }, true);
+
+  // Select an edge by clicking its line; click elsewhere clears the selection.
+  boardEl.addEventListener('click', e => {
+    if(connectMode) return;
+    const path = e.target.closest && e.target.closest('.edge-path');
+    if(path){ e.stopPropagation(); selectEdge(path.parentNode.dataset.eid); }
+  });
+  document.addEventListener('mousedown', e => {
+    if(connectMode) return;
+    if(e.target.closest && (e.target.closest('.edge-path') || e.target.closest('#edge-del'))) return;
+    deselectEdge();
+  });
+  const edgeDelBtn = document.getElementById('edge-del');
+  edgeDelBtn.addEventListener('mousedown', e=>{ e.preventDefault(); e.stopPropagation(); });
+  edgeDelBtn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); deleteSelectedEdge(); });
+  document.addEventListener('keydown', e => {
+    if((e.key==='Delete'||e.key==='Backspace') && selectedEdge){
+      const a=document.activeElement; if(a && a.isContentEditable) return;   // let text editing use Backspace
+      e.preventDefault(); deleteSelectedEdge();
+    }
+  });
+  window.addEventListener('resize', scheduleRender);
+  document.addEventListener('scroll', scheduleRender, true);
 
   // Boot: a shared hash wins over localStorage; otherwise restore saved work.
   // Connect autosave only after wiring so setup itself doesn't count as an edit.
@@ -1295,7 +1440,7 @@
     const fromHash = await loadFromHash();
     if(!fromHash) restoreState();
     initBoard();
-    const obs = new MutationObserver(scheduleSave);
+    const obs = new MutationObserver(muts => { if(muts.every(isEdgeMutation)) return; scheduleSave(); scheduleRender(); });
     obs.observe(boardEl, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
     boardEl.addEventListener('input', scheduleSave);
     window.addEventListener('beforeunload', () => { if(autosaveReady){ clearTimeout(saveTimer); saveState(); } });
@@ -1309,7 +1454,7 @@
   // Same {html, colors} shape as the autosave, just to/from a file. Round-trips
   // exactly because it reuses the same serialization.
   function exportJSON(){
-    const data = { v:1, html: serializeBoard(), colors: currentColors() };
+    const data = boardData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1325,6 +1470,7 @@
       if(!data || typeof data.html !== 'string'){ alert('JSON 缺少 board 内容'); return; }
       boardEl.innerHTML = safeBoardHtml(data.html);   // imported files are untrusted too
       applyColors(data.colors);
+      edges = data.edges || [];
       initBoard();
       scheduleSave();
     };
