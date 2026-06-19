@@ -1,5 +1,6 @@
 import { toPng } from "html-to-image";
 import type { Board } from "./board";
+import { isBoard } from "./share";
 
 function download(href: string, name: string) {
   const a = document.createElement("a");
@@ -27,11 +28,8 @@ export function exportJson(board: Board, name = "flowdina") {
 export function parseBoard(text: string): Board | null {
   try {
     const b = JSON.parse(text);
-    if (b && (b.mode === "board" || b.mode === "flow") && Array.isArray(b.sections) && b.theme) {
-      return b as Board;
-    }
+    return isBoard(b) ? b : null;
   } catch {
-    // not valid json / not a board
+    return null;
   }
-  return null;
 }
