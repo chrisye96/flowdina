@@ -8,6 +8,7 @@ import { encodeBoard, decodeBoard, saveState, loadState, type Mode } from "@/lib
 import { updateByPath, type Path } from "@/lib/path";
 import BoardView from "./BoardView";
 import Inspector from "./Inspector";
+import AiPrompt from "./AiPrompt";
 import Ico from "./Ico";
 import s from "./shell.module.css";
 
@@ -19,6 +20,7 @@ export default function EditorShell() {
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [dark, setDark] = useState(false);
   const [showInspector, setShowInspector] = useState(true);
+  const [showAi, setShowAi] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ready = useRef(false);
@@ -197,6 +199,11 @@ export default function EditorShell() {
           </button>
         </div>
 
+        <button className={s.btn} onClick={() => setShowAi(true)} title="用 AI 生成流程图">
+          <Ico name="sparkles" size={15} color="#534ab7" />
+          AI 生成
+        </button>
+
         <button
           className={connect ? s.toggleOn : s.btn}
           onClick={() => {
@@ -263,6 +270,18 @@ export default function EditorShell() {
         </div>
         {showInspector && <Inspector board={board} setBoard={setBoard} />}
       </div>
+
+      {showAi && (
+        <AiPrompt
+          onClose={() => setShowAi(false)}
+          onBoard={(b) => {
+            setBoards((prev) => ({ ...prev, [b.mode]: b }));
+            setMode(b.mode);
+            setSelectedEdge(null);
+            flash("AI 生成完成 ✓");
+          }}
+        />
+      )}
     </div>
   );
 }
