@@ -17,6 +17,7 @@ export default function EditorShell() {
   const [status, setStatus] = useState("");
   const [connect, setConnect] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [dark, setDark] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ready = useRef(false);
@@ -61,6 +62,21 @@ export default function EditorShell() {
     setBoard((b) => ({ ...b, sections: [...b.sections, { type: "node", node }] }));
     flash("已添加卡片 ✓");
   };
+
+  // Chrome theme is a UI preference, kept apart from the diagram data (its own key).
+  useEffect(() => {
+    if (localStorage.getItem("flowdina-chrome") === "dark") setDark(true);
+  }, []);
+  const toggleDark = () =>
+    setDark((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("flowdina-chrome", next ? "dark" : "light");
+      } catch {
+        // storage disabled — ignore
+      }
+      return next;
+    });
 
   // Selection belongs to one board; dropping it on a mode switch avoids a dangling id.
   useEffect(() => setSelectedEdge(null), [mode]);
@@ -158,7 +174,7 @@ export default function EditorShell() {
   };
 
   return (
-    <div className={s.app}>
+    <div className={s.app} data-chrome={dark ? "dark" : undefined}>
       <header className={s.topbar}>
         <div className={s.brand}>
           <span className={s.logo}>
@@ -196,6 +212,9 @@ export default function EditorShell() {
 
         <div className={s.spacer} />
         {status && <span className={s.status}>{status}</span>}
+        <button className={s.btn} onClick={toggleDark} title={dark ? "切换到亮色外壳" : "切换到暗色外壳"} aria-label="切换外壳主题">
+          <Ico name={dark ? "sun" : "moon"} size={15} />
+        </button>
         <button className={s.btn} onClick={() => fileRef.current?.click()}>
           <Ico name="upload" size={15} />
           导入
