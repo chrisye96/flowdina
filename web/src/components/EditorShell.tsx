@@ -18,6 +18,7 @@ export default function EditorShell() {
   const [connect, setConnect] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [dark, setDark] = useState(false);
+  const [showInspector, setShowInspector] = useState(true);
   const captureRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ready = useRef(false);
@@ -66,6 +67,8 @@ export default function EditorShell() {
   // Chrome theme is a UI preference, kept apart from the diagram data (its own key).
   useEffect(() => {
     if (localStorage.getItem("flowdina-chrome") === "dark") setDark(true);
+    // Start with the inspector collapsed on phones — light editing first, panel on demand.
+    if (window.matchMedia("(max-width: 767px)").matches) setShowInspector(false);
   }, []);
   const toggleDark = () =>
     setDark((v) => {
@@ -215,6 +218,14 @@ export default function EditorShell() {
         <button className={s.btn} onClick={toggleDark} title={dark ? "切换到亮色外壳" : "切换到暗色外壳"} aria-label="切换外壳主题">
           <Ico name={dark ? "sun" : "moon"} size={15} />
         </button>
+        <button
+          className={showInspector ? s.toggleOn : s.btn}
+          onClick={() => setShowInspector((v) => !v)}
+          title="属性面板"
+          aria-label="切换属性面板"
+        >
+          <Ico name="panel-right" size={15} color={showInspector ? "#534ab7" : undefined} />
+        </button>
         <button className={s.btn} onClick={() => fileRef.current?.click()}>
           <Ico name="upload" size={15} />
           导入
@@ -250,7 +261,7 @@ export default function EditorShell() {
             />
           </div>
         </div>
-        <Inspector board={board} setBoard={setBoard} />
+        {showInspector && <Inspector board={board} setBoard={setBoard} />}
       </div>
     </div>
   );
