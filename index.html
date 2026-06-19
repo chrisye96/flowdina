@@ -366,13 +366,17 @@
   .connect-src{ outline:2px solid #2563eb !important; outline-offset:2px; }
   body.connect-mode #board .card, body.connect-mode #board .fc-pill, body.connect-mode #board .col,
   body.connect-mode #board [contenteditable]{ cursor:crosshair; }
-  .edge-del{ position:fixed; z-index:85; display:none; width:22px; height:22px; border:none; border-radius:6px;
-    background:#dc2626; color:#fff; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 2px 7px rgba(0,0,0,.22); }
-  .edge-del.show{ display:flex; }
-  .edge-del svg{ width:13px; height:13px; }
+  .edge-tools{ position:fixed; z-index:85; display:none; align-items:center; gap:2px; padding:3px;
+    background:#1f2937; border-radius:9px; box-shadow:0 6px 18px rgba(0,0,0,.28); }
+  .edge-tools.show{ display:flex; }
+  .edge-tools button{ width:28px; height:28px; border:none; border-radius:6px; background:transparent; color:#fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .edge-tools button:hover{ background:rgba(255,255,255,.16); }
+  .edge-tools button[data-act="del"]:hover{ background:#dc2626; }
+  .edge-tools button svg{ width:15px; height:15px; }
   body.exporting #edge-layer .edge.selected .edge-path{ stroke:#64748b; }
   body.exporting #edge-layer .edge.selected .edge-head{ fill:#64748b; }
-  body.exporting .edge-del{ display:none !important; }
+  body.exporting .edge-tools{ display:none !important; }
   body.exporting .connect-src{ outline:none !important; }
   .edge-handle{ fill:#fff; stroke:#2563eb; stroke-width:2; pointer-events:all; cursor:grab; }
   .edge-handle:hover{ fill:#dbeafe; }
@@ -739,8 +743,13 @@
   <!-- Floating delete button (appears on hovering a removable block; excluded from export) -->
   <button class="del-float" id="del-float" type="button" title="删除此项"><i data-lucide="trash-2"></i></button>
 
-  <!-- Floating delete for a selected connector edge -->
-  <button class="edge-del" id="edge-del" type="button" title="删除连线"><i data-lucide="trash-2"></i></button>
+  <!-- Floating styling toolbar for a selected connector edge -->
+  <div class="edge-tools" id="edge-tools">
+    <button data-act="line" type="button" title="线型：直线 / 折线 / 曲线"><i data-lucide="spline"></i></button>
+    <button data-act="arrow" type="button" title="箭头：单向 / 双向 / 无"><i data-lucide="arrow-right"></i></button>
+    <button data-act="dash" type="button" title="实线 / 虚线"><i data-lucide="minus"></i></button>
+    <button data-act="del" type="button" title="删除连线"><i data-lucide="trash-2"></i></button>
+  </div>
 
   <!-- Undo toast -->
   <div class="toast" id="toast"><span id="toast-msg">已删除 1 项</span><button id="toast-undo">撤销</button></div>
@@ -1384,17 +1393,36 @@
     edges.forEach(e => {
       const pts = edgePoints(e, b); if(!pts) return;   // dangling (block gone) -> skip
       const g=document.createElementNS(svgns,'g'); g.setAttribute('class','edge'+(e===selectedEdge?' selected':'')); g.dataset.eid=e.id;
-      const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d','M'+pts.p1.x+' '+pts.p1.y+' L'+pts.p2.x+' '+pts.p2.y);
+      const geo=pathGeom(e.line||'straight', pts.p1, pts.p2);
+      const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d',geo.d);
+      if(e.dash) path.setAttribute('stroke-dasharray','6 5');
       g.appendChild(path);
-      drawHead(g, pts.p1, pts.p2, e.arrow);
+      drawHead(g, geo, pts.p1, pts.p2, e.arrow||'end');
       if(e===selectedEdge){ handle(g, pts.p1, 'from'); handle(g, pts.p2, 'to'); }
       svg.appendChild(g);
     });
   }
-  function drawHead(g, from, to, arrow){
+  function pathGeom(line, p1, p2){
+    if(line==='elbow'){
+      if(Math.abs(p2.y-p1.y) >= Math.abs(p2.x-p1.x)){
+        const my=(p1.y+p2.y)/2;
+        return { d:'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y, headFrom:{x:p2.x,y:my}, tailFrom:{x:p1.x,y:my} };
+      }
+      const mx=(p1.x+p2.x)/2;
+      return { d:'M '+p1.x+' '+p1.y+' L '+mx+' '+p1.y+' L '+mx+' '+p2.y+' L '+p2.x+' '+p2.y, headFrom:{x:mx,y:p2.y}, tailFrom:{x:mx,y:p1.y} };
+    }
+    if(line==='curve'){
+      const vert = Math.abs(p2.y-p1.y) >= Math.abs(p2.x-p1.x), k=0.5;
+      const c1 = vert ? {x:p1.x, y:p1.y+(p2.y-p1.y)*k} : {x:p1.x+(p2.x-p1.x)*k, y:p1.y};
+      const c2 = vert ? {x:p2.x, y:p2.y-(p2.y-p1.y)*k} : {x:p2.x-(p2.x-p1.x)*k, y:p2.y};
+      return { d:'M '+p1.x+' '+p1.y+' C '+c1.x+' '+c1.y+' '+c2.x+' '+c2.y+' '+p2.x+' '+p2.y, headFrom:c2, tailFrom:c1 };
+    }
+    return { d:'M '+p1.x+' '+p1.y+' L '+p2.x+' '+p2.y, headFrom:p1, tailFrom:p2 };
+  }
+  function drawHead(g, geo, p1, p2, arrow){
     if(arrow==='none') return;
-    const a=Math.atan2(to.y-from.y, to.x-from.x);
-    tri(g,to,a); if(arrow==='both') tri(g,from,a+Math.PI);
+    tri(g, p2, Math.atan2(p2.y-geo.headFrom.y, p2.x-geo.headFrom.x));
+    if(arrow==='both') tri(g, p1, Math.atan2(p1.y-geo.tailFrom.y, p1.x-geo.tailFrom.x));
   }
   function tri(g, tip, a){
     const L=11, W=6, bx=tip.x-L*Math.cos(a), by=tip.y-L*Math.sin(a);
@@ -1402,18 +1430,21 @@
     p.setAttribute('points', tip.x+' '+tip.y+' '+(bx-W*Math.sin(a))+' '+(by+W*Math.cos(a))+' '+(bx+W*Math.sin(a))+' '+(by-W*Math.cos(a)));
     g.appendChild(p);
   }
-  function scheduleRender(){ if(renderRAF) return; renderRAF=requestAnimationFrame(()=>{ renderRAF=0; renderEdges(); if(selectedEdge) positionEdgeDel(); }); }
+  function scheduleRender(){ if(renderRAF) return; renderRAF=requestAnimationFrame(()=>{ renderRAF=0; renderEdges(); if(selectedEdge) positionEdgeTools(); }); }
 
-  function selectEdge(id){ selectedEdge = edges.find(x=>x.id===id)||null; renderEdges(); positionEdgeDel(); }
-  function deselectEdge(){ if(!selectedEdge) return; selectedEdge=null; renderEdges(); document.getElementById('edge-del').classList.remove('show'); }
-  function positionEdgeDel(){
-    const del=document.getElementById('edge-del');
+  function selectEdge(id){ selectedEdge = edges.find(x=>x.id===id)||null; renderEdges(); positionEdgeTools(); }
+  function deselectEdge(){ if(!selectedEdge) return; selectedEdge=null; renderEdges(); document.getElementById('edge-tools').classList.remove('show'); }
+  function positionEdgeTools(){
+    const t=document.getElementById('edge-tools');
     const path = selectedEdge && boardEl.querySelector('.edge[data-eid="'+selectedEdge.id+'"] .edge-path');
-    if(!path){ del.classList.remove('show'); return; }
-    const r=path.getBoundingClientRect();
-    del.style.left=(r.left+r.width/2-11)+'px'; del.style.top=(r.top+r.height/2-11)+'px'; del.classList.add('show');
+    if(!path){ t.classList.remove('show'); return; }
+    t.classList.add('show');
+    const r=path.getBoundingClientRect(), tw=t.offsetWidth||128, th=t.offsetHeight||34;
+    let left=r.left+r.width/2-tw/2, top=r.top+r.height/2-th/2;
+    left=Math.max(8, Math.min(left, window.innerWidth-tw-8)); top=Math.max(8, top);
+    t.style.left=left+'px'; t.style.top=top+'px';
   }
-  function deleteSelectedEdge(){ if(!selectedEdge) return; edges=edges.filter(x=>x!==selectedEdge); selectedEdge=null; renderEdges(); document.getElementById('edge-del').classList.remove('show'); scheduleSave(); }
+  function deleteSelectedEdge(){ if(!selectedEdge) return; edges=edges.filter(x=>x!==selectedEdge); selectedEdge=null; renderEdges(); document.getElementById('edge-tools').classList.remove('show'); scheduleSave(); }
 
   function clearSrc(){ boardEl.querySelectorAll('.connect-src').forEach(el=>el.classList.remove('connect-src')); }
   function setStatus(msg){ document.getElementById('status').textContent = msg||''; }
@@ -1446,12 +1477,22 @@
   });
   document.addEventListener('mousedown', e => {
     if(connectMode) return;
-    if(e.target.closest && (e.target.closest('.edge-path, .edge-handle') || e.target.closest('#edge-del'))) return;
+    if(e.target.closest && (e.target.closest('.edge-path, .edge-handle') || e.target.closest('#edge-tools'))) return;
     deselectEdge();
   });
-  const edgeDelBtn = document.getElementById('edge-del');
-  edgeDelBtn.addEventListener('mousedown', e=>{ e.preventDefault(); e.stopPropagation(); });
-  edgeDelBtn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); deleteSelectedEdge(); });
+  function nextIn(arr, cur){ return arr[(arr.indexOf(cur)+1) % arr.length]; }
+  function edgeAction(act){
+    if(!selectedEdge) return;
+    if(act==='del'){ deleteSelectedEdge(); return; }
+    if(act==='line')  selectedEdge.line  = nextIn(['straight','elbow','curve'], selectedEdge.line||'straight');
+    if(act==='arrow') selectedEdge.arrow = nextIn(['end','both','none'], selectedEdge.arrow||'end');
+    if(act==='dash')  selectedEdge.dash  = !selectedEdge.dash;
+    renderEdges(); positionEdgeTools(); scheduleSave();
+  }
+  document.querySelectorAll('#edge-tools button[data-act]').forEach(btn => {
+    btn.addEventListener('mousedown', e=>{ e.preventDefault(); e.stopPropagation(); });
+    btn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); edgeAction(btn.dataset.act); });
+  });
   document.addEventListener('keydown', e => {
     if((e.key==='Delete'||e.key==='Backspace') && selectedEdge){
       const a=document.activeElement; if(a && a.isContentEditable) return;   // let text editing use Backspace
@@ -1491,7 +1532,7 @@
     const { edge, end } = dragging, target = dropTarget;
     dragging = null; dragPreview = null; document.body.classList.remove('dragging-edge'); setDrop(null);
     if(target){ const tid = blockId(target); if(end==='from') edge.from = tid; else edge.to = tid; scheduleSave(); }
-    renderEdges(); positionEdgeDel();
+    renderEdges(); positionEdgeTools();
   });
 
   // Boot: a shared hash wins over localStorage; otherwise restore saved work.
