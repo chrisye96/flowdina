@@ -40,8 +40,9 @@ function setByPath<T>(obj: T, path: string, value: string): T {
   return clone as T;
 }
 
-export default function Inspector({ board, setBoard }: { board: Board; setBoard: (b: Board) => void }) {
-  const update = (path: string, value: string) => setBoard({ ...board, theme: setByPath(board.theme, path, value) });
+export default function Inspector({ board, setBoard }: { board: Board; setBoard: (b: Board, coalesceKey?: string) => void }) {
+  // Coalesce by colour path so a slider drag is one undo step, not dozens.
+  const update = (path: string, value: string) => setBoard({ ...board, theme: setByPath(board.theme, path, value) }, "theme:" + path);
   const groups = [...new Set(FIELDS.map((f) => f.group))];
 
   return (

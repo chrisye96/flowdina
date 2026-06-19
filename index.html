@@ -228,15 +228,15 @@
      so it reads as a quiet affordance rather than an alarm that follows the
      cursor. A short hover-intent delay (in JS) stops it flickering. */
   .del-float{
-    position:fixed; z-index:85; display:none; width:20px; height:20px;
-    border:none; border-radius:6px; background:#ef4444; color:#fff; cursor:pointer;
-    align-items:center; justify-content:center; box-shadow:0 2px 7px rgba(0,0,0,.22);
-    opacity:.78; transform:scale(.9);
+    position:fixed; z-index:85; display:none; width:17px; height:17px;
+    border:1.5px solid #fff; border-radius:50%; background:#ef4444; color:#fff; cursor:pointer;
+    align-items:center; justify-content:center; box-shadow:0 2px 7px rgba(0,0,0,.28);
+    opacity:.85; transform:scale(.9);
     transition:opacity .12s ease, transform .12s ease, background .12s ease;
   }
   .del-float.show{display:flex;}
-  .del-float:hover{opacity:1; transform:scale(1.08); background:#dc2626;}
-  .del-float svg{width:12px; height:12px;}
+  .del-float:hover{opacity:1; transform:scale(1.12); background:#dc2626;}
+  .del-float svg{width:10px; height:10px;}
   /* Two-stage scope preview: faint while merely hovering the block,
      bright + tinted only once the cursor is on the × (about to delete). */
   .rm-active{outline:1.5px dashed rgba(220,38,38,.28); outline-offset:2px; border-radius:8px;}
@@ -352,7 +352,7 @@
   .fc-branch{ display:flex; gap:14px; align-items:flex-start; width:100%; }
   .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:52px; }
   /* a caption that sits on a connector: opaque background + above the line so the line reads as passing behind it (label-on-wire) */
-  .fc-merge{ position:relative; font-size:12px; color:#475569; font-weight:600; text-align:center; background:var(--page-bg); padding:5px 16px; border-radius:6px; }
+  .fc-merge{ position:relative; z-index:1; font-size:12px; color:#475569; font-weight:600; text-align:center; background:var(--page-bg); padding:5px 16px; border-radius:6px; }
 
   /* ---------- Connectors: block-to-block editable edges ---------- */
   #board{ position:relative; }
@@ -971,6 +971,7 @@
 
   // Human-readable label so the tooltip + red outline make the delete scope obvious.
   function rmLabel(el){
+    if(el.matches('.card-icon')) return '删除图标';
     if(el.matches('.col')) return '删除整个阶段';
     if(el.matches('.card')) return '删除整张卡片';
     if(el.matches('.note, .notif-head, .note-head')) return '删除通知框';
@@ -988,8 +989,11 @@
       activeRemovable.classList.add('rm-active');
       delFloat.title = rmLabel(activeRemovable);
       const r = activeRemovable.getBoundingClientRect();
-      delFloat.style.top = (r.top + 4) + 'px';
-      delFloat.style.left = (r.right - 23) + 'px';
+      // Sit at the top-right corner, mostly OUTSIDE the block, so the × never
+      // covers its clickable centre — critical for tiny targets like one icon.
+      const SZ = 17;
+      delFloat.style.top  = Math.max(6, r.top - SZ + 5) + 'px';
+      delFloat.style.left = Math.min(r.right - 5, window.innerWidth - SZ - 6) + 'px';
       delFloat.classList.add('show');
     } else {
       delFloat.classList.remove('show');
@@ -1215,6 +1219,7 @@
     boardEl.querySelectorAll('.col').forEach(addCardBar);
     lucide.createIcons();
     seedCidSeq(); renderEdges();
+    updateConnectAvail();
   }
 
   function serializeBoard(){
@@ -1488,7 +1493,16 @@
 
   function clearSrc(){ boardEl.querySelectorAll('.connect-src').forEach(el=>el.classList.remove('connect-src')); }
   function setStatus(msg){ document.getElementById('status').textContent = msg||''; }
+  // Connectors only make sense for the flowchart layout (block-to-block edges); the
+  // kanban "journey" board has no use for them, so the button is hidden there.
+  function isFlowMode(){ return !!boardEl.querySelector('.fc-pill, .fc-branch, .fc-card'); }
+  function updateConnectAvail(){
+    const flow = isFlowMode();
+    document.getElementById('connect-btn').style.display = flow ? '' : 'none';
+    if(!flow && connectMode) toggleConnect();   // exit connect mode when leaving the flowchart
+  }
   function toggleConnect(){
+    if(!connectMode && !isFlowMode()) return;    // block entering connect on the journey board; allow exiting
     connectMode=!connectMode; connectSrc=null; clearSrc();
     document.body.classList.toggle('connect-mode', connectMode);
     document.getElementById('connect-btn').classList.toggle('primary', connectMode);

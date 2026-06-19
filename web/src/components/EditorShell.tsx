@@ -12,47 +12,94 @@ import AiPrompt from "./AiPrompt";
 import Ico from "./Ico";
 import s from "./shell.module.css";
 
+type Sel = { kind: "node" | "edge"; id: string } | null;
+type Clip = { kind: "node"; node: Node } | { kind: "edge"; edge: Edge } | null;
+
+// Locate a node by id anywhere in the sections (top-level or inside a columns branch).
+function findNode(b: Board, id: string): Node | null {
+  for (const sec of b.sections) {
+    if (sec.type === "node" && sec.node.id === id) return sec.node;
+    if (sec.type === "columns") for (const c of sec.columns) for (const n of c.nodes) if (n.id === id) return n;
+  }
+  return null;
+}
+const newId = () => crypto.randomUUID().slice(0, 8);
+
 export default function EditorShell() {
   const [boards, setBoards] = useState<{ board: Board; flow: Board }>({ board: sampleBoard, flow: flowBoard });
   const [mode, setMode] = useState<Mode>("board");
   const [status, setStatus] = useState("");
   const [connect, setConnect] = useState(false);
-  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Sel>(null);
   const [dark, setDark] = useState(false);
   const [showInspector, setShowInspector] = useState(true);
   const [showAi, setShowAi] = useState(false);
+  const [hasClip, setHasClip] = useState(false);
+  const [, setHistTick] = useState(0); // forces the toolbar's enabled-state to refresh
   const captureRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ready = useRef(false);
 
+  // Undo/redo history for the active board (cleared on a mode switch).
+  const past = useRef<Board[]>([]);
+  const future = useRef<Board[]>([]);
+  const coalesce = useRef<string | null>(null);
+  const clip = useRef<Clip>(null);
+
+  // Refs mirror state so the one global key handler stays stable yet never reads stale values.
+  const boardsRef = useRef(boards); boardsRef.current = boards;
+  const modeRef = useRef(mode); modeRef.current = mode;
+  const selRef = useRef<Sel>(selected); selRef.current = selected;
+
   const board = boards[mode];
-  const setBoard = (updater: Board | ((b: Board) => Board)) =>
-    setBoards((prev) => ({ ...prev, [mode]: typeof updater === "function" ? (updater as (b: Board) => Board)(prev[mode]) : updater }));
+  const selectedEdge = selected?.kind === "edge" ? selected.id : null;
+  const selectedNode = selected?.kind === "node" ? selected.id : null;
+
+  // The single history-aware mutator. A coalesceKey folds a burst of same-key edits
+  // (typing in one field, dragging one colour) into one undo step; no key = its own step.
+  const mutate = (producer: (b: Board) => Board, coalesceKey?: string) => {
+    const m = modeRef.current;
+    setBoards((prev) => {
+      const cur = prev[m];
+      const next = producer(cur);
+      if (next === cur) return prev;
+      if (!(coalesceKey && coalesce.current === coalesceKey)) {
+        past.current.push(cur);
+        if (past.current.length > 100) past.current.shift();
+        future.current = [];
+      }
+      coalesce.current = coalesceKey ?? null;
+      return { ...prev, [m]: next };
+    });
+    setHistTick((t) => t + 1);
+  };
+  const setBoard = (updater: Board | ((b: Board) => Board), coalesceKey?: string) =>
+    mutate((b) => (typeof updater === "function" ? (updater as (b: Board) => Board)(b) : updater), coalesceKey);
 
   const flash = (msg: string) => {
     setStatus(msg);
     setTimeout(() => setStatus(""), 1800);
   };
 
-  const onEdit = (path: Path, value: string) => setBoard((b) => updateByPath(b, path, value));
+  const onEdit = (path: Path, value: string) => setBoard((b) => updateByPath(b, path, value), "edit:" + path.join("."));
 
-  // Connector editing: add (connect two blocks), delete the selected edge.
+  // ---- connectors ----
   const addEdge = (from: string, to: string) => {
     setBoard((b) => {
       if (from === to || b.edges.some((e) => e.from === from && e.to === to)) return b;
-      return { ...b, edges: [...b.edges, { id: crypto.randomUUID().slice(0, 8), from, to, line: "elbow", arrow: "end" }] };
+      return { ...b, edges: [...b.edges, { id: newId(), from, to, line: "elbow", arrow: "end" }] };
     });
     flash("已连接 ✓");
   };
   const deleteEdge = (id: string) => {
     setBoard((b) => ({ ...b, edges: b.edges.filter((e) => e.id !== id) }));
-    setSelectedEdge(null);
+    setSelected(null);
   };
   const updateEdge = (id: string, patch: Partial<Edge>) =>
     setBoard((b) => ({ ...b, edges: b.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
 
-  // Structural editing: remove a node (and any edges touching it), or append a fresh card.
-  const deleteNode = (id: string) =>
+  // ---- nodes ----
+  const deleteNode = (id: string) => {
     setBoard((b) => ({
       ...b,
       sections: b.sections
@@ -60,10 +107,97 @@ export default function EditorShell() {
         .filter((sec) => sec.type !== "node" || sec.node.id !== id),
       edges: b.edges.filter((e) => e.from !== id && e.to !== id),
     }));
-  const addNode = () => {
-    const node: Node = { id: crypto.randomUUID().slice(0, 8), blocks: [{ type: "titleRow", icon: { name: "square" }, text: "新步骤" }] };
+    setSelected(null);
+  };
+  const appendNode = (node: Node, msg: string) => {
     setBoard((b) => ({ ...b, sections: [...b.sections, { type: "node", node }] }));
-    flash("已添加卡片 ✓");
+    setSelected({ kind: "node", id: node.id });
+    flash(msg);
+  };
+  const addNode = () => appendNode({ id: newId(), blocks: [{ type: "titleRow", icon: { name: "square" }, text: "新步骤" }] }, "已添加卡片 ✓");
+
+  // ---- history ----
+  const undo = () => {
+    if (!past.current.length) return;
+    const m = modeRef.current;
+    setBoards((prev) => {
+      future.current.push(prev[m]);
+      return { ...prev, [m]: past.current.pop()! };
+    });
+    coalesce.current = null;
+    setSelected(null);
+    setHistTick((t) => t + 1);
+  };
+  const redo = () => {
+    if (!future.current.length) return;
+    const m = modeRef.current;
+    setBoards((prev) => {
+      past.current.push(prev[m]);
+      return { ...prev, [m]: future.current.pop()! };
+    });
+    coalesce.current = null;
+    setSelected(null);
+    setHistTick((t) => t + 1);
+  };
+
+  // ---- delete / clipboard ----
+  const setClip = (c: Clip) => {
+    clip.current = c;
+    setHasClip(!!c);
+  };
+  const deleteSel = () => {
+    const sel = selRef.current;
+    if (!sel) return;
+    if (sel.kind === "node") deleteNode(sel.id);
+    else deleteEdge(sel.id);
+  };
+  const copySel = () => {
+    const sel = selRef.current;
+    if (!sel) return;
+    const b = boardsRef.current[modeRef.current];
+    if (sel.kind === "node") {
+      const n = findNode(b, sel.id);
+      if (n) { setClip({ kind: "node", node: structuredClone(n) }); flash("已复制 ✓"); }
+    } else {
+      const e = b.edges.find((x) => x.id === sel.id);
+      if (e) { setClip({ kind: "edge", edge: structuredClone(e) }); flash("已复制 ✓"); }
+    }
+  };
+  const pasteClip = () => {
+    const c = clip.current;
+    if (!c) return;
+    if (c.kind === "node") {
+      appendNode({ ...structuredClone(c.node), id: newId() }, "已粘贴 ✓");
+    } else {
+      const b = boardsRef.current[modeRef.current];
+      if (findNode(b, c.edge.from) && findNode(b, c.edge.to)) {
+        const id = newId();
+        setBoard((bd) => ({ ...bd, edges: [...bd.edges, { ...structuredClone(c.edge), id }] }));
+        setSelected({ kind: "edge", id });
+        flash("已粘贴 ✓");
+      } else flash("连线的端点已不存在");
+    }
+  };
+  const cutSel = () => {
+    copySel();
+    deleteSel();
+  };
+  const duplicateSel = () => {
+    const sel = selRef.current;
+    if (!sel) return;
+    const b = boardsRef.current[modeRef.current];
+    if (sel.kind === "node") {
+      const n = findNode(b, sel.id);
+      if (n) appendNode({ ...structuredClone(n), id: newId() }, "已创建副本 ✓");
+    } else {
+      const e = b.edges.find((x) => x.id === sel.id);
+      if (e) {
+        const id = newId();
+        setBoard((bd) => ({ ...bd, edges: [...bd.edges, { ...structuredClone(e), id }] }));
+        setSelected({ kind: "edge", id });
+        flash("已创建副本 ✓");
+      }
+    }
   };
 
   // Chrome theme is a UI preference, kept apart from the diagram data (its own key).
@@ -83,29 +217,56 @@ export default function EditorShell() {
       return next;
     });
 
-  // Selection belongs to one board; dropping it on a mode switch avoids a dangling id.
-  useEffect(() => setSelectedEdge(null), [mode]);
+  // Selection + history belong to one board; reset them on a mode switch.
+  useEffect(() => {
+    setSelected(null);
+    past.current = [];
+    future.current = [];
+    coalesce.current = null;
+  }, [mode]);
 
-  // Esc exits connect/selection; Delete removes the selected edge (unless typing in a field).
+  // One stable global key handler. All dynamic values are read through refs, so the
+  // listener is bound once. Text fields keep their own copy/paste/undo behaviour.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const ae = document.activeElement as HTMLElement | null;
+      const editing = !!ae && (ae.isContentEditable || ae.tagName === "INPUT" || ae.tagName === "TEXTAREA");
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+
       if (e.key === "Escape") {
-        setSelectedEdge(null);
+        setSelected(null);
         setConnect(false);
         return;
       }
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedEdge) {
-        const ae = document.activeElement as HTMLElement | null;
-        if (ae && (ae.isContentEditable || ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return;
+      if (mod && k === "z") {
+        if (editing) return; // let the field do its own text undo
         e.preventDefault();
-        deleteEdge(selectedEdge);
+        if (e.shiftKey) redo(); else undo();
+        return;
       }
+      if (mod && k === "y") {
+        if (editing) return;
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (editing) return; // remaining shortcuts are board-level only
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selRef.current) { e.preventDefault(); deleteSel(); }
+        return;
+      }
+      if (mod && k === "c") { if (selRef.current) { e.preventDefault(); copySel(); } return; }
+      if (mod && k === "x") { if (selRef.current) { e.preventDefault(); cutSel(); } return; }
+      if (mod && k === "v") { if (clip.current) { e.preventDefault(); pasteClip(); } return; }
+      if (mod && k === "d") { if (selRef.current) { e.preventDefault(); duplicateSel(); } return; }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // selectedEdge captures the active board's setter freshly (selection resets on mode change).
+    // stable handler: every dynamic value above is read via a ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEdge]);
+  }, []);
 
   // Restore: a shared hash wins, else localStorage, else the default fixtures.
   useEffect(() => {
@@ -142,7 +303,7 @@ export default function EditorShell() {
 
   const png = async () => {
     if (!captureRef.current) return;
-    setSelectedEdge(null); // keep the selection chrome out of the export
+    setSelected(null); // keep the selection chrome out of the export
     flash("导出中…");
     try {
       // Let the deselect re-render paint before the capture reads the DOM.
@@ -178,6 +339,9 @@ export default function EditorShell() {
     e.target.value = "";
   };
 
+  const canUndo = past.current.length > 0;
+  const canRedo = future.current.length > 0;
+
   return (
     <div className={s.app} data-chrome={dark ? "dark" : undefined}>
       <header className={s.topbar}>
@@ -199,6 +363,31 @@ export default function EditorShell() {
           </button>
         </div>
 
+        <div className={s.editTools}>
+          <button className={s.iconBtn} onClick={undo} disabled={!canUndo} title="撤销 (Ctrl+Z)" aria-label="撤销">
+            <Ico name="undo-2" size={15} />
+          </button>
+          <button className={s.iconBtn} onClick={redo} disabled={!canRedo} title="重做 (Ctrl+Shift+Z)" aria-label="重做">
+            <Ico name="redo-2" size={15} />
+          </button>
+          <span className={s.vsep} />
+          <button className={s.iconBtn} onClick={copySel} disabled={!selected} title="复制 (Ctrl+C)" aria-label="复制">
+            <Ico name="copy" size={15} />
+          </button>
+          <button className={s.iconBtn} onClick={cutSel} disabled={!selected} title="剪切 (Ctrl+X)" aria-label="剪切">
+            <Ico name="scissors" size={15} />
+          </button>
+          <button className={s.iconBtn} onClick={pasteClip} disabled={!hasClip} title="粘贴 (Ctrl+V)" aria-label="粘贴">
+            <Ico name="clipboard-paste" size={15} />
+          </button>
+          <button className={s.iconBtn} onClick={duplicateSel} disabled={!selected} title="创建副本 (Ctrl+D)" aria-label="创建副本">
+            <Ico name="copy-plus" size={15} />
+          </button>
+          <button className={s.iconBtn} onClick={deleteSel} disabled={!selected} title="删除 (Delete)" aria-label="删除">
+            <Ico name="trash-2" size={15} />
+          </button>
+        </div>
+
         <button className={s.btn} onClick={() => setShowAi(true)} title="用 AI 生成流程图">
           <Ico name="sparkles" size={15} color="#534ab7" />
           AI 生成
@@ -208,7 +397,7 @@ export default function EditorShell() {
           className={connect ? s.toggleOn : s.btn}
           onClick={() => {
             setConnect((v) => !v);
-            setSelectedEdge(null);
+            setSelected(null);
           }}
           title="连接模式：依次点两个方块即可连线"
         >
@@ -260,8 +449,8 @@ export default function EditorShell() {
               onEdit={onEdit}
               connect={connect}
               onConnect={addEdge}
-              selectedEdge={selectedEdge}
-              onSelectEdge={setSelectedEdge}
+              selected={selected}
+              onSelect={setSelected}
               onDeleteEdge={deleteEdge}
               onUpdateEdge={updateEdge}
               onDeleteNode={deleteNode}
@@ -277,7 +466,7 @@ export default function EditorShell() {
           onBoard={(b) => {
             setBoards((prev) => ({ ...prev, [b.mode]: b }));
             setMode(b.mode);
-            setSelectedEdge(null);
+            setSelected(null);
             flash("AI 生成完成 ✓");
           }}
         />
