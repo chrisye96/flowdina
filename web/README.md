@@ -16,6 +16,24 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## AI 生成 (Vercel AI Gateway)
+
+The "AI 生成" button generates a diagram from a plain-language description. It calls
+`POST /api/generate`, which routes a Claude model through the
+[Vercel AI Gateway](https://vercel.com/docs/ai-gateway). The route never embeds a key —
+it reads one from the environment:
+
+```bash
+# web/.env.local
+AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key
+# optional — defaults to anthropic/claude-sonnet-4.6
+AI_MODEL=anthropic/claude-sonnet-4.6
+```
+
+On Vercel, the gateway is authenticated automatically via the project's OIDC token, so no
+key is needed in production. Without a key locally, the editor shows a friendly
+"AI 未配置" message instead of failing.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
