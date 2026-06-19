@@ -1334,7 +1334,7 @@
   function boardData(){ return { v:1, html: serializeBoard(), colors: currentColors(), edges: validEdges() }; }
   function validEdges(){ return edges.filter(e => blockById(e.from) && blockById(e.to)); }
   function flowEdges(){    // the franchise approval flow's predefined connections (replaces the old static arrows)
-    const mk=(from,to)=>({ id:'e'+(++edgeSeq), from, to, line:'straight', arrow:'end' });
+    const mk=(from,to)=>({ id:'e'+(++edgeSeq), from, to, line:'elbow', arrow:'end' });
     return [
       mk('appReceived','step1'), mk('step1','decision'),
       mk('decision','step2'), mk('decision','step3'), mk('decision','step4'),
@@ -1358,27 +1358,49 @@
     if(!svg){ svg = document.createElementNS(svgns,'svg'); svg.id='edge-layer'; boardEl.insertBefore(svg, boardEl.firstChild); }
     return svg;
   }
-  function rectIn(el, b){ const r=el.getBoundingClientRect(); return { x:r.left-b.left+r.width/2, y:r.top-b.top+r.height/2, w:r.width, h:r.height }; }
-  function borderPt(c, tx, ty){
-    const dx=tx-c.x, dy=ty-c.y; if(!dx && !dy) return {x:c.x,y:c.y};
-    const s = 1/Math.max(Math.abs(dx)/(c.w/2), Math.abs(dy)/(c.h/2));
-    return { x:c.x+dx*s, y:c.y+dy*s };
+  function rectIn(el, b){
+    const r=el.getBoundingClientRect(), x=r.left-b.left, y=r.top-b.top;
+    return { cx:x+r.width/2, cy:y+r.height/2, left:x, top:y, right:x+r.width, bottom:y+r.height };
+  }
+  function port(rect, side){
+    if(side==='top')    return { x:rect.cx, y:rect.top };
+    if(side==='bottom') return { x:rect.cx, y:rect.bottom };
+    if(side==='left')   return { x:rect.left, y:rect.cy };
+    return { x:rect.right, y:rect.cy };
+  }
+  function sideToward(rect, pt){
+    const dx=pt.x-rect.cx, dy=pt.y-rect.cy;
+    if(Math.abs(dy) >= Math.abs(dx)) return dy>=0 ? 'bottom' : 'top';
+    return dx>=0 ? 'right' : 'left';
   }
   // Resolve an edge to its two endpoints. The end being dragged floats to the
   // cursor (board coords); the others snap to their block border.
   function edgePoints(e, b){
-    function center(which){
+    function end(which){
       if(dragPreview && dragging && dragging.edge===e && dragPreview.which===which)
-        return { x: dragPreview.x - b.left, y: dragPreview.y - b.top, free:true };
+        return { free:true, p:{ x:dragPreview.x-b.left, y:dragPreview.y-b.top } };
       const el = blockById(which==='from' ? e.from : e.to);
-      return el ? Object.assign(rectIn(el,b), { free:false }) : null;
+      return el ? { free:false, rect:rectIn(el,b) } : null;
     }
-    const cf = center('from'), ct = center('to');
-    if(!cf || !ct) return null;
-    return {
-      p1: cf.free ? { x:cf.x, y:cf.y } : borderPt(cf, ct.x, ct.y),
-      p2: ct.free ? { x:ct.x, y:ct.y } : borderPt(ct, cf.x, cf.y)
-    };
+    const f=end('from'), t=end('to');
+    if(!f || !t) return null;
+    if(f.free && t.free){ const dx=t.p.x-f.p.x, dy=t.p.y-f.p.y; return { p1:f.p, p2:t.p, orient: Math.abs(dy)>=Math.abs(dx)?'v':'h' }; }
+    if(f.free){ const s=sideToward(t.rect, f.p); return { p1:f.p, p2:port(t.rect,s), orient:(s==='top'||s==='bottom')?'v':'h' }; }
+    if(t.free){ const s=sideToward(f.rect, t.p); return { p1:port(f.rect,s), p2:t.p, orient:(s==='top'||s==='bottom')?'v':'h' }; }
+    // Choose sides by how the blocks are separated, not by centre distance:
+    // cards of different heights must still connect bottom->top in a downward flow.
+    const a=f.rect, c=t.rect;
+    let sf, st, orient;
+    if(c.top >= a.bottom-1){ sf='bottom'; st='top'; orient='v'; }        // target below
+    else if(c.bottom <= a.top+1){ sf='top'; st='bottom'; orient='v'; }   // target above
+    else if(c.left >= a.right-1){ sf='right'; st='left'; orient='h'; }   // target to the right
+    else if(c.right <= a.left+1){ sf='left'; st='right'; orient='h'; }   // target to the left
+    else {                                                               // overlapping: fall back to centre delta
+      const dx=c.cx-a.cx, dy=c.cy-a.cy, v=Math.abs(dy)>=Math.abs(dx); orient=v?'v':'h';
+      sf = v ? (dy>=0?'bottom':'top') : (dx>=0?'right':'left');
+      st = v ? (dy>=0?'top':'bottom') : (dx>=0?'left':'right');
+    }
+    return { p1:port(a,sf), p2:port(c,st), orient };
   }
   function handle(g, p, end){
     const c=document.createElementNS(svgns,'circle'); c.setAttribute('class','edge-handle'); c.setAttribute('data-end',end);
@@ -1393,7 +1415,7 @@
     edges.forEach(e => {
       const pts = edgePoints(e, b); if(!pts) return;   // dangling (block gone) -> skip
       const g=document.createElementNS(svgns,'g'); g.setAttribute('class','edge'+(e===selectedEdge?' selected':'')); g.dataset.eid=e.id;
-      const geo=pathGeom(e.line||'straight', pts.p1, pts.p2);
+      const geo=pathGeom(e.line||'straight', pts.p1, pts.p2, pts.orient);
       const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d',geo.d);
       if(e.dash) path.setAttribute('stroke-dasharray','6 5');
       g.appendChild(path);
@@ -1402,9 +1424,9 @@
       svg.appendChild(g);
     });
   }
-  function pathGeom(line, p1, p2){
+  function pathGeom(line, p1, p2, orient){
     if(line==='elbow'){
-      if(Math.abs(p2.y-p1.y) >= Math.abs(p2.x-p1.x)){
+      if(orient==='v'){
         const my=(p1.y+p2.y)/2;
         return { d:'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y, headFrom:{x:p2.x,y:my}, tailFrom:{x:p1.x,y:my} };
       }
@@ -1412,9 +1434,9 @@
       return { d:'M '+p1.x+' '+p1.y+' L '+mx+' '+p1.y+' L '+mx+' '+p2.y+' L '+p2.x+' '+p2.y, headFrom:{x:mx,y:p2.y}, tailFrom:{x:mx,y:p1.y} };
     }
     if(line==='curve'){
-      const vert = Math.abs(p2.y-p1.y) >= Math.abs(p2.x-p1.x), k=0.5;
-      const c1 = vert ? {x:p1.x, y:p1.y+(p2.y-p1.y)*k} : {x:p1.x+(p2.x-p1.x)*k, y:p1.y};
-      const c2 = vert ? {x:p2.x, y:p2.y-(p2.y-p1.y)*k} : {x:p2.x-(p2.x-p1.x)*k, y:p2.y};
+      const v = orient==='v', k=0.5;
+      const c1 = v ? {x:p1.x, y:p1.y+(p2.y-p1.y)*k} : {x:p1.x+(p2.x-p1.x)*k, y:p1.y};
+      const c2 = v ? {x:p2.x, y:p2.y-(p2.y-p1.y)*k} : {x:p2.x-(p2.x-p1.x)*k, y:p2.y};
       return { d:'M '+p1.x+' '+p1.y+' C '+c1.x+' '+c1.y+' '+c2.x+' '+c2.y+' '+p2.x+' '+p2.y, headFrom:c2, tailFrom:c1 };
     }
     return { d:'M '+p1.x+' '+p1.y+' L '+p2.x+' '+p2.y, headFrom:p1, tailFrom:p2 };
