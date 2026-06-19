@@ -23,3 +23,11 @@
 .status { font-size: 12.5px; color: #16a34a; font-weight: 600; }
 
 .canvas { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; align-items: flex-start; }
+
+/* Phones: wrap the toolbar instead of clipping, drop the title, give the canvas more room. */
+@media (max-width: 767px) {
+  .topbar { flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
+  .spacer { display: none; }
+  .docTitle, .sep { display: none; }
+  .canvas { padding: 12px; }
+}
