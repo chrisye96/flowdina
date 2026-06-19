@@ -1,17 +1,9 @@
 "use client";
 
-import { type ComponentProps } from "react";
-import { DynamicIcon } from "lucide-react/dynamic";
 import type { Block, Theme } from "@/lib/board";
 import { tokenColor } from "@/lib/theme";
+import Ico from "./Ico";
 import s from "./board.module.css";
-
-type DynName = ComponentProps<typeof DynamicIcon>["name"];
-
-function Ico({ name, size = 16 }: { name?: string; size?: number }) {
-  if (!name) return null;
-  return <DynamicIcon name={name as DynName} size={size} />;
-}
 
 export default function BlockView({ block, theme }: { block: Block; theme: Theme }) {
   switch (block.type) {
