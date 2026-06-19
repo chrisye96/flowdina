@@ -361,6 +361,9 @@
   .edge-head{ fill:#64748b; pointer-events:none; }
   .edge.selected .edge-path{ stroke:#2563eb; stroke-width:3; }
   .edge.selected .edge-head{ fill:#2563eb; }
+  .edge-label{ font:600 11px -apple-system,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif; fill:#334155; pointer-events:none; }
+  .edge.selected .edge-label{ fill:#1d4ed8; }
+  .edge-label-bg{ fill:var(--page-bg); }
   .connect-src{ outline:2px solid #2563eb !important; outline-offset:2px; }
   body.connect-mode #board .card, body.connect-mode #board .fc-pill, body.connect-mode #board .col,
   body.connect-mode #board [contenteditable]{ cursor:crosshair; }
@@ -739,6 +742,7 @@
     <button data-act="line" type="button" title="线型：直线 / 折线 / 曲线"><i data-lucide="spline"></i></button>
     <button data-act="arrow" type="button" title="箭头：单向 / 双向 / 无"><i data-lucide="arrow-right"></i></button>
     <button data-act="dash" type="button" title="实线 / 虚线"><i data-lucide="minus"></i></button>
+    <button data-act="label" type="button" title="连线文字标签"><i data-lucide="tag"></i></button>
     <button data-act="del" type="button" title="删除连线"><i data-lucide="trash-2"></i></button>
   </div>
 
@@ -1423,6 +1427,7 @@
       drawHead(g, geo, pts.p1, pts.p2, e.arrow||'end');
       if(e===selectedEdge){ handle(g, pts.p1, 'from'); handle(g, pts.p2, 'to'); }
       svg.appendChild(g);
+      if(e.label) addLabel(g, path, e.label);   // after g is in the DOM so text can be measured
     });
   }
   function pathGeom(line, p1, p2, orient){
@@ -1452,6 +1457,18 @@
     const p=document.createElementNS(svgns,'polygon'); p.setAttribute('class','edge-head');
     p.setAttribute('points', tip.x+' '+tip.y+' '+(bx-W*Math.sin(a))+' '+(by+W*Math.cos(a))+' '+(bx+W*Math.sin(a))+' '+(by-W*Math.cos(a)));
     g.appendChild(p);
+  }
+  function addLabel(g, path, label){
+    const len=path.getTotalLength(); if(!len) return;
+    const mid=path.getPointAtLength(len/2);
+    const t=document.createElementNS(svgns,'text'); t.setAttribute('class','edge-label');
+    t.setAttribute('x',mid.x); t.setAttribute('y',mid.y); t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','central');
+    t.textContent=label;
+    g.appendChild(t);                                  // measure once it's in the DOM
+    const w=t.getComputedTextLength()+12, h=16;
+    const r=document.createElementNS(svgns,'rect'); r.setAttribute('class','edge-label-bg');
+    r.setAttribute('x',mid.x-w/2); r.setAttribute('y',mid.y-h/2); r.setAttribute('width',w); r.setAttribute('height',h); r.setAttribute('rx',4);
+    g.insertBefore(r, t);                              // background behind the text
   }
   function scheduleRender(){ if(renderRAF) return; renderRAF=requestAnimationFrame(()=>{ renderRAF=0; renderEdges(); if(selectedEdge) positionEdgeTools(); }); }
 
@@ -1507,6 +1524,11 @@
   function edgeAction(act){
     if(!selectedEdge) return;
     if(act==='del'){ deleteSelectedEdge(); return; }
+    if(act==='label'){
+      const t = prompt('连线文字（留空删除）：', selectedEdge.label||'');
+      if(t!==null){ const v=t.trim(); selectedEdge.label = v||undefined; renderEdges(); positionEdgeTools(); scheduleSave(); }
+      return;
+    }
     if(act==='line')  selectedEdge.line  = nextIn(['straight','elbow','curve'], selectedEdge.line||'straight');
     if(act==='arrow') selectedEdge.arrow = nextIn(['end','both','none'], selectedEdge.arrow||'end');
     if(act==='dash')  selectedEdge.dash  = !selectedEdge.dash;
