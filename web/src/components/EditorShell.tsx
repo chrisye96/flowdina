@@ -84,6 +84,8 @@ export default function EditorShell() {
   };
 
   const onEdit = (path: Path, value: string) => setBoard((b) => updateByPath(b, path, value), "edit:" + path.join("."));
+  // Structural edits (list items, icon name/removal): each is its own undo step, no coalescing.
+  const onSet = (path: Path, value: unknown) => setBoard((b) => updateByPath(b, path, value));
 
   // ---- connectors ----
   const addEdge = (from: string, to: string) => {
@@ -472,6 +474,7 @@ export default function EditorShell() {
             <BoardView
               board={board}
               onEdit={onEdit}
+              onSet={onSet}
               connect={connect}
               onConnect={addEdge}
               selected={selected}
