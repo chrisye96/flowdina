@@ -187,8 +187,13 @@ export default function EdgeLayer({
                     placeholder="标签"
                     onChange={(ev) => onUpdate?.(p.id, { label: ev.target.value || undefined })}
                   />
+                  {e.label && (
+                    <button className={s.edgeBtn} onClick={() => onUpdate?.(p.id, { label: undefined, labelDx: undefined, labelDy: undefined })} title="删除标签文字">
+                      ✕
+                    </button>
+                  )}
                   <span className={s.edgeSep} />
-                  <button className={s.edgeDel} onClick={() => onDelete?.(p.id)} title="删除连线">
+                  <button className={s.edgeDel} onClick={() => onDelete?.(p.id)} title="删除整条连线">
                     删除
                   </button>
                 </div>

@@ -10,7 +10,7 @@ import Editable from "./Editable";
 import Ico from "./Ico";
 import s from "./board.module.css";
 
-type Sel = { kind: "node" | "edge"; id: string } | null;
+type Sel = { kind: "node" | "edge" | "caption"; id: string } | null;
 
 export default function BoardView({
   board,
@@ -73,11 +73,15 @@ export default function BoardView({
       }
       return;
     }
-    // Outside connect mode: click a block to select it, click empty canvas to clear.
-    // (Edge clicks stopPropagation in EdgeLayer, so they never reach here.)
-    const el = (ev.target as HTMLElement).closest("[data-node-id]");
-    const id = el?.getAttribute("data-node-id") ?? null;
-    onSelect?.(id ? { kind: "node", id } : null);
+    // Outside connect mode: click a block → select the node, click a caption →
+    // select the caption, click empty canvas → clear. (Edge clicks stopPropagation
+    // in EdgeLayer, so they never reach here.)
+    const t = ev.target as HTMLElement;
+    const nodeEl = t.closest("[data-node-id]");
+    if (nodeEl) return onSelect?.({ kind: "node", id: nodeEl.getAttribute("data-node-id")! });
+    const capEl = t.closest("[data-caption-index]");
+    if (capEl) return onSelect?.({ kind: "caption", id: capEl.getAttribute("data-caption-index")! });
+    onSelect?.(null);
   };
 
   const E = (text: string, ...keys: (string | number)[]): ReactNode =>
@@ -130,8 +134,14 @@ export default function BoardView({
       );
     }
     if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onDelete={onDeleteNode} selected={selectedNode === sec.node.id} />;
+    const capSel = selected?.kind === "caption" && Number(selected.id) === i;
     return (
-      <div key={i} className={s.caption} style={sec.dx || sec.dy ? { transform: `translate(${sec.dx ?? 0}px, ${sec.dy ?? 0}px)` } : undefined}>
+      <div
+        key={i}
+        data-caption-index={i}
+        className={`${s.caption}${capSel ? " " + s.nodeSelected : ""}`}
+        style={sec.dx || sec.dy ? { transform: `translate(${sec.dx ?? 0}px, ${sec.dy ?? 0}px)` } : undefined}
+      >
         {onMoveCaption && (
           <span className={s.capHandle} title="拖动以移动这句说明" onPointerDown={(ev) => captionDrag(ev, i, sec.dx ?? 0, sec.dy ?? 0)}>
             <Ico name="move" size={12} />
