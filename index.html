@@ -75,6 +75,7 @@
     width:1380px; background:var(--page-bg);
     padding:22px; border-radius:14px; color:var(--title-color);
   }
+  #board:has(.flow){ width:1020px; }   /* flowchart is narrower than the 6-column board */
 
   .banner{
     display:flex; justify-content:space-between; align-items:center;
@@ -323,6 +324,63 @@
   .reset-btn:hover{background:#f9fafb;}
   .scrim{position:fixed; inset:0; background:rgba(0,0,0,.18); z-index:55; display:none;}
   .scrim.open{display:block;}
+  /* ---------- Flow mode: vertical flowchart template (Phase 1.5) ---------- */
+  /* Nodes are the existing .card; this only adds the vertical layout, arrows,
+     pills, decision/state styling, a bulleted list and an assignment chip.
+     ponytail: hand-structured layout (spine + one branch + one merge). No graph
+     auto-layout engine until charts become arbitrary. */
+  .flow{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:34px; }
+  .flow .card{ width:100%; margin-bottom:0; }
+  .fc-card{ overflow:hidden; }
+  .fc-pill{ display:inline-flex; align-items:center; gap:8px; padding:11px 22px; border-radius:999px; color:#fff; font-weight:700; font-size:14px; }
+  .fc-pill svg{ width:18px; height:18px; }
+  .fc-pill-blue{ background:#2563eb; } .fc-pill-red{ background:#dc2626; }
+  .fc-header{ margin:-14px -14px 12px; padding:10px 14px; border-radius:11px 11px 0 0; color:#fff; font-weight:700; font-size:12.5px; text-align:center; letter-spacing:.03em; }
+  .fc-h-orange{ background:linear-gradient(135deg,#f59e0b,#d97706); }
+  .fc-h-blue{ background:#2563eb; } .fc-h-green{ background:#16a34a; } .fc-h-red{ background:#dc2626; }
+  .fc-sub{ font-size:11.5px; color:#64748b; text-align:center; margin:3px 0; }
+  .fc-decision{ border:2px solid #a855f7; background:#faf5ff; }
+  .fc-decision .fc-sub{ color:#7c3aed; }
+  .fc-state-blue{ border:2px solid #3b82f6; }
+  .fc-state-green{ border:2px solid #16a34a; background:#f0fdf4; }
+  .fc-band{ margin:10px -14px -14px; padding:9px 14px; border-radius:0 0 11px 11px; background:#fefce8; font-size:11.5px; font-weight:600; color:#854d0e; }
+  .fc-list{ margin:9px 0; padding-left:20px; font-size:11.5px; color:var(--body-color); line-height:1.5; }
+  .fc-list li{ margin:3px 0; }
+  .fc-disclaimer{ background:#fef2f2; border-color:#fecaca; }
+  .fc-chip{ display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:6px 10px; border-radius:7px; background:#eef2ff; color:#4f46e5; font-size:11px; font-weight:600; }
+  .fc-chip svg{ width:13px; height:13px; }
+  .fc-branch{ display:flex; gap:14px; align-items:flex-start; width:100%; }
+  .fc-col{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:34px; }
+  .fc-merge{ font-size:12px; color:#475569; font-weight:600; margin-top:8px; text-align:center; }
+
+  /* ---------- Connectors: block-to-block editable edges ---------- */
+  #board{ position:relative; }
+  #edge-layer{ position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:2; }
+  .edge-path{ fill:none; stroke:#64748b; stroke-width:2; pointer-events:stroke; cursor:pointer; }
+  .edge-head{ fill:#64748b; pointer-events:none; }
+  .edge.selected .edge-path{ stroke:#2563eb; stroke-width:3; }
+  .edge.selected .edge-head{ fill:#2563eb; }
+  .connect-src{ outline:2px solid #2563eb !important; outline-offset:2px; }
+  body.connect-mode #board .card, body.connect-mode #board .fc-pill, body.connect-mode #board .col,
+  body.connect-mode #board [contenteditable]{ cursor:crosshair; }
+  .edge-tools{ position:fixed; z-index:85; display:none; align-items:center; gap:2px; padding:3px;
+    background:#1f2937; border-radius:9px; box-shadow:0 6px 18px rgba(0,0,0,.28); }
+  .edge-tools.show{ display:flex; }
+  .edge-tools button{ width:28px; height:28px; border:none; border-radius:6px; background:transparent; color:#fff;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .edge-tools button:hover{ background:rgba(255,255,255,.16); }
+  .edge-tools button[data-act="del"]:hover{ background:#dc2626; }
+  .edge-tools button svg{ width:15px; height:15px; }
+  body.exporting #edge-layer .edge.selected .edge-path{ stroke:#64748b; }
+  body.exporting #edge-layer .edge.selected .edge-head{ fill:#64748b; }
+  body.exporting .edge-tools{ display:none !important; }
+  body.exporting .connect-src{ outline:none !important; }
+  .edge-handle{ fill:#fff; stroke:#2563eb; stroke-width:2; pointer-events:all; cursor:grab; }
+  .edge-handle:hover{ fill:#dbeafe; }
+  body.dragging-edge{ cursor:grabbing; }
+  body.dragging-edge #edge-layer *{ pointer-events:none; }   /* see through to the block under the cursor */
+  .drop-target{ outline:2px dashed #16a34a !important; outline-offset:2px; }
+  body.exporting .edge-handle{ display:none !important; }
 </style>
 </head>
 <body>
@@ -334,10 +392,12 @@
     <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>颜色设置</button>
     <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>新增阶段</button>
     <button class="tbtn" onclick="resetTemplate()" title="清除所有改动，恢复到初始模板"><i data-lucide="rotate-ccw"></i>重置模板</button>
+    <button class="tbtn" onclick="loadFlow()" title="载入流程图模板（分支审批流程）"><i data-lucide="git-branch"></i>流程图模板</button>
     <button class="tbtn" onclick="exportJSON()" title="把当前图表保存为 JSON 文件"><i data-lucide="braces"></i>导出 JSON</button>
     <button class="tbtn" onclick="document.getElementById('import-json').click()" title="从 JSON 文件载入图表"><i data-lucide="upload"></i>导入 JSON</button>
     <input type="file" id="import-json" accept="application/json,.json" style="display:none">
     <button class="tbtn" onclick="copyShareLink()" title="复制包含当前图表的分享链接"><i data-lucide="link"></i>分享链接</button>
+    <button class="tbtn" id="connect-btn" onclick="toggleConnect()" title="连接模式：点两个方块来连线"><i data-lucide="spline"></i>连接</button>
     <span id="status"></span>
     <span id="saved" class="saved-ind"><i data-lucide="check"></i>已自动保存</span>
     <span class="hint">改动会自动保存到本机浏览器 · 点击文字直接编辑 · 选中文字可加粗 / 改色 · 悬停出现 ＋（加内容）和 ×（删除）· 导出仅含图表</span>
@@ -531,6 +591,122 @@
     </div><!-- /board-wrap -->
   </div><!-- /page -->
 
+  <!-- Flow-mode template (Phase 1.5): the franchise approval flowchart. Inert until loadFlow() copies it into #board. -->
+  <template id="flow-tpl">
+    <div class="flow">
+
+      <div class="fc-pill fc-pill-blue" data-cid="appReceived"><i data-lucide="play"></i><span class="ce">Application Received</span></div>
+
+      <div class="card fc-card" data-cid="step1">
+        <div class="fc-header fc-h-orange ce">STEP 1: ACCEPT APPLICATION - UNDER REVIEW</div>
+        <div class="card-row"><div class="card-icon" style="background:#f59e0b"><i data-lucide="clock"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
+        <ul class="fc-list">
+          <li class="ce">Franchisor logs in through their ID</li>
+          <li class="ce">Compatibility score is shown from WordPress</li>
+          <li class="ce">Accept application for review</li>
+          <li class="ce">Provide timeline for decision (7 days wait period)</li>
+          <li class="ce">System sends notification to franchisee with expected decision date</li>
+        </ul>
+        <div class="fc-band ce">Timeline: 7 Business Days Review Period</div>
+      </div>
+
+      <div class="card fc-card fc-decision" data-cid="decision">
+        <div class="card-row"><div class="card-icon" style="background:#a855f7"><i data-lucide="zap"></i></div><div class="card-title ce" style="color:#7c3aed">DECISION POINT</div></div>
+        <div class="fc-sub ce">After 7-Day Review Period</div>
+        <div class="fc-sub ce">Franchisor chooses next action</div>
+        <div class="note fc-disclaimer">
+          <div class="note-head"><i data-lucide="alert-triangle"></i><span class="note-label ce" style="color:#dc2626">DISCLAIMER:</span></div>
+          <div class="note-body ce">If no action is taken after 7-day review period, application will <b>AUTO-DECLINE</b>. Admin will receive email notification that application declined due to no action taken.</div>
+          <div class="fc-chip"><i data-lucide="message-circle"></i><span class="ce">Sana to share email content for auto-decline notification</span></div>
+        </div>
+      </div>
+
+      <div class="fc-branch">
+        <div class="fc-col">
+          <div class="card fc-card" data-cid="step2">
+            <div class="fc-header fc-h-blue ce">STEP 2: FINANCIAL CHECK</div>
+            <div class="card-row"><div class="card-icon" style="background:#2563eb"><i data-lucide="dollar-sign"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
+            <ul class="fc-list">
+              <li class="ce">Click "Financial Health Check Required" button on dashboard</li>
+              <li class="ce">System automatically triggers email to franchisee email ID (from WordPress). Subject: Financial Health Check Required. Content: "Please submit your financial health check within 5 business days." Timer Active: 5 Business Days to Submit</li>
+              <li class="ce">Application declined if no action after 5 days. Automated email sent.</li>
+              <li class="ce">Once complete, franchisor gets email to approve or decline.</li>
+            </ul>
+            <div class="btn btn-outline" style="border-color:#f59e0b; color:#b45309"><i data-lucide="mail"></i><span class="ce">Sana to share email content</span></div>
+            <div class="note">
+              <div class="note-head"><i data-lucide="file-text"></i><span class="note-label ce">BACKEND INTEGRATION</span></div>
+              <ul class="fc-list">
+                <li class="ce">Email ID retrieved from franchisee's WordPress application</li>
+                <li class="ce">Linked with WordPress backend through Inverite Financial Health Check</li>
+                <li class="ce">When button clicked and email sent, status shows "In Progress"</li>
+                <li class="ce">When complete, data auto-syncs to dashboard via API</li>
+              </ul>
+            </div>
+            <div class="note">
+              <div class="note-head"><i data-lucide="file-text"></i><span class="note-label ce">AD-HOC ACTION AVAILABLE</span></div>
+              <div class="note-body ce"><b>On Successful Verification:</b> button label changes to "Verification Complete - View Details"; opens franchisee financial details in a new window.</div>
+            </div>
+          </div>
+          <div class="card fc-card fc-state-blue" data-cid="awaiting">
+            <div class="card-row"><div class="card-icon" style="background:#3b82f6"><i data-lucide="hourglass"></i></div><div class="card-title ce">Awaiting Financial Submission</div></div>
+            <div class="fc-sub ce">Franchisee has 5 business days to submit</div>
+            <div class="fc-sub ce">WordPress &#8594; API &#8594; Dashboard sync</div>
+          </div>
+          <div class="card fc-card fc-state-green" data-cid="financialDone">
+            <div class="card-row"><div class="card-icon" style="background:#16a34a"><i data-lucide="check"></i></div><div class="card-title ce">Financial Check Completed</div></div>
+            <div class="fc-sub ce">Auto-synced from WordPress via API</div>
+            <div class="fc-sub ce">Status visible on dashboard</div>
+          </div>
+        </div>
+
+        <div class="fc-col">
+          <div class="card fc-card" data-cid="step3">
+            <div class="fc-header fc-h-green ce">STEP 3: APPLICATION APPROVED</div>
+            <div class="card-row"><div class="card-icon" style="background:#16a34a"><i data-lucide="circle-check"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
+            <ul class="fc-list">
+              <li class="ce">Click "Approve" button (no financial check needed)</li>
+              <li class="ce">Application immediately approved</li>
+              <li class="ce">System sends approval notification to franchisee</li>
+            </ul>
+            <div class="note">
+              <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">AUTOMATED EMAIL SENT</span></div>
+              <div class="note-body ce">Franchisee notified of application approval with next steps</div>
+              <div class="fc-chip"><i data-lucide="message-circle"></i><span class="ce">Sana to share email content</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fc-col">
+          <div class="card fc-card danger-card" data-cid="step4">
+            <div class="fc-header fc-h-red ce">STEP 4: APPLICATION DECLINED</div>
+            <div class="card-row"><div class="card-icon" style="background:#dc2626"><i data-lucide="circle-x"></i></div><div class="card-title ce">Franchisor Actions:</div></div>
+            <ul class="fc-list"><li class="ce">Click "Decline" button</li></ul>
+            <div class="note">
+              <div class="note-head"><i data-lucide="mail"></i><span class="note-label ce">AUTOMATED EMAIL SENT</span></div>
+              <div class="fc-chip"><i data-lucide="message-circle"></i><span class="ce">Sana to share email content</span></div>
+            </div>
+          </div>
+          <div class="fc-pill fc-pill-red" data-cid="processEnds"><i data-lucide="ban"></i><span class="ce">Process Ends</span></div>
+        </div>
+      </div>
+
+      <div class="fc-merge ce">Both approval paths converge here</div>
+
+      <div class="card fc-card" data-cid="postApproval">
+        <div class="fc-header fc-h-green ce">POST-APPROVAL STATE</div>
+        <div class="card-row"><div class="card-icon" style="background:#16a34a"><i data-lucide="circle-check"></i></div><div class="card-title ce">Application Status: APPROVED</div></div>
+        <ul class="fc-list">
+          <li class="ce">Franchisee can proceed with onboarding process</li>
+          <li class="ce" style="color:#dc2626"><b>WITHDRAWAL OPTION AVAILABLE</b></li>
+          <li class="ce">Franchisor can withdraw approval at ANY point post-approval</li>
+          <li class="ce">If "Withdraw Application" clicked, emails sent to: Franchisee, Franchisor (confirmation), Admin (system record), Partner</li>
+          <li class="ce">All parties notified simultaneously</li>
+        </ul>
+      </div>
+
+    </div>
+  </template>
+
   <!-- ================= INLINE FORMAT TOOLBAR (appears on text selection; excluded from export) ================= -->
   <div class="seltool" id="seltool">
     <button class="st-btn" id="st-bold" title="加粗 / 取消加粗（也可用 Ctrl/Cmd+B）"><i data-lucide="bold"></i></button>
@@ -556,6 +732,14 @@
 
   <!-- Floating delete button (appears on hovering a removable block; excluded from export) -->
   <button class="del-float" id="del-float" type="button" title="删除此项"><i data-lucide="trash-2"></i></button>
+
+  <!-- Floating styling toolbar for a selected connector edge -->
+  <div class="edge-tools" id="edge-tools">
+    <button data-act="line" type="button" title="线型：直线 / 折线 / 曲线"><i data-lucide="spline"></i></button>
+    <button data-act="arrow" type="button" title="箭头：单向 / 双向 / 无"><i data-lucide="arrow-right"></i></button>
+    <button data-act="dash" type="button" title="实线 / 虚线"><i data-lucide="minus"></i></button>
+    <button data-act="del" type="button" title="删除连线"><i data-lucide="trash-2"></i></button>
+  </div>
 
   <!-- Undo toast -->
   <div class="toast" id="toast"><span id="toast-msg">已删除 1 项</span><button id="toast-undo">撤销</button></div>
@@ -769,7 +953,8 @@
     '.badge', '.corner-tag', '.notif-head', '.num', '.col-title', '.col-sub',
     '.card-icon', '.card-title', '.card-body', '.f-label', '.f-value', '.f-sub',
     '.note-head', '.note-label', '.note-body', '.notif-title',
-    '.verify-title', '.verify-row', '.warn-title', '.warn-text', '.banner-title'
+    '.verify-title', '.verify-row', '.warn-title', '.warn-text', '.banner-title',
+    '.fc-pill', '.fc-chip', '.fc-list li', '.fc-band', '.fc-sub', '.fc-header'
   ];
   const RM_SELECTOR = RM_LIST.map(s => '#board ' + s).join(', ');
   const undoStack = [];
@@ -1024,11 +1209,14 @@
     boardEl.querySelectorAll('.ce').forEach(el=>{ el.setAttribute('contenteditable','true'); el.setAttribute('spellcheck','false'); });
     boardEl.querySelectorAll('.col').forEach(addCardBar);
     lucide.createIcons();
+    seedCidSeq(); renderEdges();
   }
 
   function serializeBoard(){
     const clone = boardEl.cloneNode(true);
     clone.querySelectorAll('.add-ui').forEach(n => n.remove());                          // re-injected by initBoard()
+    clone.querySelectorAll('#edge-layer').forEach(n => n.remove());                       // edges persist as data, not markup
+    clone.querySelectorAll('.connect-src').forEach(n => n.classList.remove('connect-src'));
     clone.querySelectorAll('.rm-active, .rm-armed').forEach(n => n.classList.remove('rm-active','rm-armed'));
     return clone.innerHTML;
   }
@@ -1044,7 +1232,7 @@
   }
   function saveState(){
     try{
-      localStorage.setItem(LS_KEY, JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
+      localStorage.setItem(LS_KEY, JSON.stringify(boardData()));
       showSaved();
     }catch(e){ /* storage disabled (e.g. some file:// contexts) or quota — fail quietly */ }
   }
@@ -1066,6 +1254,7 @@
     if(!data || !data.html) return false;
     boardEl.innerHTML = data.html;
     applyColors(data.colors);
+    edges = data.edges || [];
     return true;
   }
   function resetTemplate(){
@@ -1074,6 +1263,19 @@
     autosaveReady = false;
     boardEl.innerHTML = TEMPLATE_HTML;
     resetColors();
+    edges = [];
+    initBoard();
+    autosaveReady = true;
+    saveState();
+  }
+  // Load the flowchart template (Phase 1.5) into the board, reusing every editor
+  // affordance (edit / delete / theme / export / share) for free.
+  function loadFlow(){
+    if(!confirm('载入流程图模板会替换当前图表，继续？')) return;
+    autosaveReady = false;
+    boardEl.innerHTML = document.getElementById('flow-tpl').innerHTML;
+    resetColors();
+    edges = flowEdges();
     initBoard();
     autosaveReady = true;
     saveState();
@@ -1103,7 +1305,7 @@
   async function copyShareLink(){
     const status=document.getElementById('status'); status.textContent='生成链接…';
     try{
-      const enc=await gzip(JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
+      const enc=await gzip(JSON.stringify(boardData()));
       // ponytail: full state in the hash, ceiling ~tens of KB. Huge boards make
       // long links — use "导出 JSON" instead then.
       const url=location.origin+location.pathname+'#s='+enc;
@@ -1117,9 +1319,243 @@
     try{
       const data=JSON.parse(await gunzip(m[1]));
       if(!data || typeof data.html!=='string') return false;
-      boardEl.innerHTML=safeBoardHtml(data.html); applyColors(data.colors); return true;
+      boardEl.innerHTML=safeBoardHtml(data.html); applyColors(data.colors); edges = data.edges || []; return true;
     }catch(e){ console.error(e); return false; }
   }
+
+  // ================= Connectors: block-to-block editable edges (Slice 1) =================
+  const svgns = 'http://www.w3.org/2000/svg';
+  const CONNECT_SELECTOR = '#board .card, #board .fc-pill, #board .col';
+  let edges = [];                 // {id, from, to, line:'straight', arrow:'end'}
+  let edgeSeq = 0, cidSeq = 0;
+  let connectMode = false, connectSrc = null, selectedEdge = null, renderRAF = 0;
+  let dragging = null, dragPreview = null, dropTarget = null;   // endpoint re-anchoring
+
+  function boardData(){ return { v:1, html: serializeBoard(), colors: currentColors(), edges: validEdges() }; }
+  function validEdges(){ return edges.filter(e => blockById(e.from) && blockById(e.to)); }
+  function flowEdges(){    // the franchise approval flow's predefined connections (replaces the old static arrows)
+    const mk=(from,to)=>({ id:'e'+(++edgeSeq), from, to, line:'elbow', arrow:'end' });
+    return [
+      mk('appReceived','step1'), mk('step1','decision'),
+      mk('decision','step2'), mk('decision','step3'), mk('decision','step4'),
+      mk('step4','processEnds'),
+      mk('step2','awaiting'), mk('awaiting','financialDone'),
+      mk('financialDone','postApproval'), mk('step3','postApproval')
+    ];
+  }
+  function blockId(el){ if(!el.dataset.cid) el.dataset.cid = 'b'+(++cidSeq); return el.dataset.cid; }
+  function blockById(id){ try{ return boardEl.querySelector('[data-cid="'+CSS.escape(id)+'"]'); }catch(e){ return null; } }
+  function seedCidSeq(){ let m=0; boardEl.querySelectorAll('[data-cid]').forEach(el=>{ const n=+(''+el.dataset.cid).replace(/\D/g,''); if(n>m) m=n; }); cidSeq=m; }
+  function isEdgeMutation(m){
+    const el = m.target.nodeType===1 ? m.target : m.target.parentElement;
+    if(el && (el.id==='edge-layer' || el.closest('#edge-layer'))) return true;
+    const nodes=[...m.addedNodes, ...m.removedNodes];
+    return nodes.length>0 && nodes.every(n => n.id==='edge-layer');
+  }
+
+  function ensureEdgeLayer(){
+    let svg = boardEl.querySelector('#edge-layer');
+    if(!svg){ svg = document.createElementNS(svgns,'svg'); svg.id='edge-layer'; boardEl.insertBefore(svg, boardEl.firstChild); }
+    return svg;
+  }
+  function rectIn(el, b){
+    const r=el.getBoundingClientRect(), x=r.left-b.left, y=r.top-b.top;
+    return { cx:x+r.width/2, cy:y+r.height/2, left:x, top:y, right:x+r.width, bottom:y+r.height };
+  }
+  function port(rect, side){
+    if(side==='top')    return { x:rect.cx, y:rect.top };
+    if(side==='bottom') return { x:rect.cx, y:rect.bottom };
+    if(side==='left')   return { x:rect.left, y:rect.cy };
+    return { x:rect.right, y:rect.cy };
+  }
+  function sideToward(rect, pt){
+    const dx=pt.x-rect.cx, dy=pt.y-rect.cy;
+    if(Math.abs(dy) >= Math.abs(dx)) return dy>=0 ? 'bottom' : 'top';
+    return dx>=0 ? 'right' : 'left';
+  }
+  // Resolve an edge to its two endpoints. The end being dragged floats to the
+  // cursor (board coords); the others snap to their block border.
+  function edgePoints(e, b){
+    function end(which){
+      if(dragPreview && dragging && dragging.edge===e && dragPreview.which===which)
+        return { free:true, p:{ x:dragPreview.x-b.left, y:dragPreview.y-b.top } };
+      const el = blockById(which==='from' ? e.from : e.to);
+      return el ? { free:false, rect:rectIn(el,b) } : null;
+    }
+    const f=end('from'), t=end('to');
+    if(!f || !t) return null;
+    if(f.free && t.free){ const dx=t.p.x-f.p.x, dy=t.p.y-f.p.y; return { p1:f.p, p2:t.p, orient: Math.abs(dy)>=Math.abs(dx)?'v':'h' }; }
+    if(f.free){ const s=sideToward(t.rect, f.p); return { p1:f.p, p2:port(t.rect,s), orient:(s==='top'||s==='bottom')?'v':'h' }; }
+    if(t.free){ const s=sideToward(f.rect, t.p); return { p1:port(f.rect,s), p2:t.p, orient:(s==='top'||s==='bottom')?'v':'h' }; }
+    // Choose sides by how the blocks are separated, not by centre distance:
+    // cards of different heights must still connect bottom->top in a downward flow.
+    const a=f.rect, c=t.rect;
+    let sf, st, orient;
+    if(c.top >= a.bottom-1){ sf='bottom'; st='top'; orient='v'; }        // target below
+    else if(c.bottom <= a.top+1){ sf='top'; st='bottom'; orient='v'; }   // target above
+    else if(c.left >= a.right-1){ sf='right'; st='left'; orient='h'; }   // target to the right
+    else if(c.right <= a.left+1){ sf='left'; st='right'; orient='h'; }   // target to the left
+    else {                                                               // overlapping: fall back to centre delta
+      const dx=c.cx-a.cx, dy=c.cy-a.cy, v=Math.abs(dy)>=Math.abs(dx); orient=v?'v':'h';
+      sf = v ? (dy>=0?'bottom':'top') : (dx>=0?'right':'left');
+      st = v ? (dy>=0?'top':'bottom') : (dx>=0?'left':'right');
+    }
+    return { p1:port(a,sf), p2:port(c,st), orient };
+  }
+  function handle(g, p, end){
+    const c=document.createElementNS(svgns,'circle'); c.setAttribute('class','edge-handle'); c.setAttribute('data-end',end);
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',6);
+    g.appendChild(c);
+  }
+  function renderEdges(){
+    const svg = ensureEdgeLayer();
+    svg.setAttribute('width', boardEl.scrollWidth); svg.setAttribute('height', boardEl.scrollHeight);
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    const b = boardEl.getBoundingClientRect();
+    edges.forEach(e => {
+      const pts = edgePoints(e, b); if(!pts) return;   // dangling (block gone) -> skip
+      const g=document.createElementNS(svgns,'g'); g.setAttribute('class','edge'+(e===selectedEdge?' selected':'')); g.dataset.eid=e.id;
+      const geo=pathGeom(e.line||'straight', pts.p1, pts.p2, pts.orient);
+      const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d',geo.d);
+      if(e.dash) path.setAttribute('stroke-dasharray','6 5');
+      g.appendChild(path);
+      drawHead(g, geo, pts.p1, pts.p2, e.arrow||'end');
+      if(e===selectedEdge){ handle(g, pts.p1, 'from'); handle(g, pts.p2, 'to'); }
+      svg.appendChild(g);
+    });
+  }
+  function pathGeom(line, p1, p2, orient){
+    if(line==='elbow'){
+      if(orient==='v'){
+        const my=(p1.y+p2.y)/2;
+        return { d:'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y, headFrom:{x:p2.x,y:my}, tailFrom:{x:p1.x,y:my} };
+      }
+      const mx=(p1.x+p2.x)/2;
+      return { d:'M '+p1.x+' '+p1.y+' L '+mx+' '+p1.y+' L '+mx+' '+p2.y+' L '+p2.x+' '+p2.y, headFrom:{x:mx,y:p2.y}, tailFrom:{x:mx,y:p1.y} };
+    }
+    if(line==='curve'){
+      const v = orient==='v', k=0.5;
+      const c1 = v ? {x:p1.x, y:p1.y+(p2.y-p1.y)*k} : {x:p1.x+(p2.x-p1.x)*k, y:p1.y};
+      const c2 = v ? {x:p2.x, y:p2.y-(p2.y-p1.y)*k} : {x:p2.x-(p2.x-p1.x)*k, y:p2.y};
+      return { d:'M '+p1.x+' '+p1.y+' C '+c1.x+' '+c1.y+' '+c2.x+' '+c2.y+' '+p2.x+' '+p2.y, headFrom:c2, tailFrom:c1 };
+    }
+    return { d:'M '+p1.x+' '+p1.y+' L '+p2.x+' '+p2.y, headFrom:p1, tailFrom:p2 };
+  }
+  function drawHead(g, geo, p1, p2, arrow){
+    if(arrow==='none') return;
+    tri(g, p2, Math.atan2(p2.y-geo.headFrom.y, p2.x-geo.headFrom.x));
+    if(arrow==='both') tri(g, p1, Math.atan2(p1.y-geo.tailFrom.y, p1.x-geo.tailFrom.x));
+  }
+  function tri(g, tip, a){
+    const L=11, W=6, bx=tip.x-L*Math.cos(a), by=tip.y-L*Math.sin(a);
+    const p=document.createElementNS(svgns,'polygon'); p.setAttribute('class','edge-head');
+    p.setAttribute('points', tip.x+' '+tip.y+' '+(bx-W*Math.sin(a))+' '+(by+W*Math.cos(a))+' '+(bx+W*Math.sin(a))+' '+(by-W*Math.cos(a)));
+    g.appendChild(p);
+  }
+  function scheduleRender(){ if(renderRAF) return; renderRAF=requestAnimationFrame(()=>{ renderRAF=0; renderEdges(); if(selectedEdge) positionEdgeTools(); }); }
+
+  function selectEdge(id){ selectedEdge = edges.find(x=>x.id===id)||null; renderEdges(); positionEdgeTools(); }
+  function deselectEdge(){ if(!selectedEdge) return; selectedEdge=null; renderEdges(); document.getElementById('edge-tools').classList.remove('show'); }
+  function positionEdgeTools(){
+    const t=document.getElementById('edge-tools');
+    const path = selectedEdge && boardEl.querySelector('.edge[data-eid="'+selectedEdge.id+'"] .edge-path');
+    if(!path){ t.classList.remove('show'); return; }
+    t.classList.add('show');
+    const r=path.getBoundingClientRect(), tw=t.offsetWidth||128, th=t.offsetHeight||34;
+    let left=r.left+r.width/2-tw/2, top=r.top+r.height/2-th/2;
+    left=Math.max(8, Math.min(left, window.innerWidth-tw-8)); top=Math.max(8, top);
+    t.style.left=left+'px'; t.style.top=top+'px';
+  }
+  function deleteSelectedEdge(){ if(!selectedEdge) return; edges=edges.filter(x=>x!==selectedEdge); selectedEdge=null; renderEdges(); document.getElementById('edge-tools').classList.remove('show'); scheduleSave(); }
+
+  function clearSrc(){ boardEl.querySelectorAll('.connect-src').forEach(el=>el.classList.remove('connect-src')); }
+  function setStatus(msg){ document.getElementById('status').textContent = msg||''; }
+  function toggleConnect(){
+    connectMode=!connectMode; connectSrc=null; clearSrc();
+    document.body.classList.toggle('connect-mode', connectMode);
+    document.getElementById('connect-btn').classList.toggle('primary', connectMode);
+    if(connectMode){ deselectEdge(); setStatus('连接模式：点起点方块，再点终点方块（再次点“连接”退出）'); }
+    else setStatus('');
+  }
+
+  // Pick blocks in connect mode. mousedown + capture so the click does not start text editing.
+  boardEl.addEventListener('mousedown', e => {
+    if(!connectMode) return;
+    const block = e.target.closest(CONNECT_SELECTOR);
+    if(!block) return;
+    e.preventDefault(); e.stopPropagation();
+    if(!connectSrc){ connectSrc=block; block.classList.add('connect-src'); setStatus('再点终点方块'); return; }
+    if(block===connectSrc){ clearSrc(); connectSrc=null; setStatus('点起点方块'); return; }
+    const from=blockId(connectSrc), to=blockId(block);
+    if(!edges.some(x=>x.from===from && x.to===to)) edges.push({ id:'e'+(++edgeSeq), from, to, line:'straight', arrow:'end' });
+    clearSrc(); connectSrc=null; renderEdges(); scheduleSave(); setStatus('已连接 ✓ 继续连，或再次点“连接”退出');
+  }, true);
+
+  // Select an edge by clicking its line; click elsewhere clears the selection.
+  boardEl.addEventListener('click', e => {
+    if(connectMode) return;
+    const path = e.target.closest && e.target.closest('.edge-path');
+    if(path){ e.stopPropagation(); selectEdge(path.parentNode.dataset.eid); }
+  });
+  document.addEventListener('mousedown', e => {
+    if(connectMode) return;
+    if(e.target.closest && (e.target.closest('.edge-path, .edge-handle') || e.target.closest('#edge-tools'))) return;
+    deselectEdge();
+  });
+  function nextIn(arr, cur){ return arr[(arr.indexOf(cur)+1) % arr.length]; }
+  function edgeAction(act){
+    if(!selectedEdge) return;
+    if(act==='del'){ deleteSelectedEdge(); return; }
+    if(act==='line')  selectedEdge.line  = nextIn(['straight','elbow','curve'], selectedEdge.line||'straight');
+    if(act==='arrow') selectedEdge.arrow = nextIn(['end','both','none'], selectedEdge.arrow||'end');
+    if(act==='dash')  selectedEdge.dash  = !selectedEdge.dash;
+    renderEdges(); positionEdgeTools(); scheduleSave();
+  }
+  document.querySelectorAll('#edge-tools button[data-act]').forEach(btn => {
+    btn.addEventListener('mousedown', e=>{ e.preventDefault(); e.stopPropagation(); });
+    btn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); edgeAction(btn.dataset.act); });
+  });
+  document.addEventListener('keydown', e => {
+    if((e.key==='Delete'||e.key==='Backspace') && selectedEdge){
+      const a=document.activeElement; if(a && a.isContentEditable) return;   // let text editing use Backspace
+      e.preventDefault(); deleteSelectedEdge();
+    }
+  });
+  window.addEventListener('resize', scheduleRender);
+  document.addEventListener('scroll', scheduleRender, true);
+
+  // Drag an endpoint handle onto another block to re-point that end (block-to-block,
+  // so dropping off any block reverts).
+  function setDrop(block){
+    if(dropTarget===block) return;
+    if(dropTarget) dropTarget.classList.remove('drop-target');
+    dropTarget = block || null;
+    if(dropTarget) dropTarget.classList.add('drop-target');
+  }
+  boardEl.addEventListener('mousedown', e => {
+    const h = e.target.closest && e.target.closest('.edge-handle');
+    if(!h || !selectedEdge) return;
+    e.preventDefault(); e.stopPropagation();
+    dragging = { edge: selectedEdge, end: h.dataset.end };
+    document.body.classList.add('dragging-edge');
+  });
+  document.addEventListener('mousemove', e => {
+    if(!dragging) return;
+    dragPreview = { which: dragging.end, x: e.clientX, y: e.clientY };
+    const otherId = dragging.end==='from' ? dragging.edge.to : dragging.edge.from;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    let block = under && under.closest ? under.closest(CONNECT_SELECTOR) : null;
+    if(block && block.dataset.cid === otherId) block = null;   // can't connect a block to itself
+    setDrop(block);
+    scheduleRender();
+  });
+  document.addEventListener('mouseup', () => {
+    if(!dragging) return;
+    const { edge, end } = dragging, target = dropTarget;
+    dragging = null; dragPreview = null; document.body.classList.remove('dragging-edge'); setDrop(null);
+    if(target){ const tid = blockId(target); if(end==='from') edge.from = tid; else edge.to = tid; scheduleSave(); }
+    renderEdges(); positionEdgeTools();
+  });
 
   // Boot: a shared hash wins over localStorage; otherwise restore saved work.
   // Connect autosave only after wiring so setup itself doesn't count as an edit.
@@ -1127,7 +1563,7 @@
     const fromHash = await loadFromHash();
     if(!fromHash) restoreState();
     initBoard();
-    const obs = new MutationObserver(scheduleSave);
+    const obs = new MutationObserver(muts => { if(muts.every(isEdgeMutation)) return; scheduleSave(); scheduleRender(); });
     obs.observe(boardEl, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
     boardEl.addEventListener('input', scheduleSave);
     window.addEventListener('beforeunload', () => { if(autosaveReady){ clearTimeout(saveTimer); saveState(); } });
@@ -1141,7 +1577,7 @@
   // Same {html, colors} shape as the autosave, just to/from a file. Round-trips
   // exactly because it reuses the same serialization.
   function exportJSON(){
-    const data = { v:1, html: serializeBoard(), colors: currentColors() };
+    const data = boardData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1157,6 +1593,7 @@
       if(!data || typeof data.html !== 'string'){ alert('JSON 缺少 board 内容'); return; }
       boardEl.innerHTML = safeBoardHtml(data.html);   // imported files are untrusted too
       applyColors(data.colors);
+      edges = data.edges || [];
       initBoard();
       scheduleSave();
     };
