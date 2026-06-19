@@ -54,6 +54,9 @@
 /* z-index lifts the caption above the (z-index:0) edge layer so its opaque
    background masks any connector line crossing it (label-on-wire). */
 .caption { text-align: center; font-size: 12px; font-weight: 600; color: var(--body-color); position: relative; z-index: 1; background: var(--page-bg); padding: 5px 16px; border-radius: 6px; }
+/* Drag handle to reposition a caption; only on hover, so it stays out of exports. */
+.capHandle { position: absolute; left: -7px; top: 50%; transform: translateY(-50%); display: none; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--label-color); cursor: move; box-shadow: 0 1px 3px rgba(16,24,40,.16); }
+.caption:hover .capHandle { display: inline-flex; }
 
 .flowCol { display: flex; flex-direction: column; align-items: center; gap: 52px; max-width: 980px; margin: 0 auto; }
 .flowCol .card { width: 100%; margin-bottom: 0; overflow: hidden; }

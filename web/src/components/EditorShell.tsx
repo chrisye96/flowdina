@@ -115,6 +115,8 @@ export default function EditorShell() {
     flash(msg);
   };
   const addNode = () => appendNode({ id: newId(), blocks: [{ type: "titleRow", icon: { name: "square" }, text: "新步骤" }] }, "已添加卡片 ✓");
+  const moveCaption = (index: number, dx: number, dy: number) =>
+    setBoard((b) => ({ ...b, sections: b.sections.map((sec, i) => (i === index && sec.type === "caption" ? { ...sec, dx, dy } : sec)) }));
 
   // ---- history ----
   const undo = () => {
@@ -454,6 +456,7 @@ export default function EditorShell() {
               onDeleteEdge={deleteEdge}
               onUpdateEdge={updateEdge}
               onDeleteNode={deleteNode}
+              onMoveCaption={moveCaption}
             />
           </div>
         </div>

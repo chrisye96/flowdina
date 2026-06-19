@@ -33,7 +33,8 @@ export type Banner = { title: string; badge?: { icon?: Icon; text: string } };
 export type Section =
   | { type: "node"; node: Node }
   | { type: "columns"; columns: Column[] }
-  | { type: "caption"; text: string };
+  // dx/dy let a free-floating caption be dragged off a crossing connector.
+  | { type: "caption"; text: string; dx?: number; dy?: number };
 
 export type Column = {
   id?: string;

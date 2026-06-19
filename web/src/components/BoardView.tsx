@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { Board, Edge } from "@/lib/board";
 import type { Path } from "@/lib/path";
 import { themeVars, tokenColor } from "@/lib/theme";
@@ -22,6 +22,7 @@ export default function BoardView({
   onDeleteEdge,
   onUpdateEdge,
   onDeleteNode,
+  onMoveCaption,
 }: {
   board: Board;
   onEdit?: (p: Path, v: string) => void;
@@ -33,6 +34,7 @@ export default function BoardView({
   onDeleteEdge?: (id: string) => void;
   onUpdateEdge?: (id: string, patch: Partial<Edge>) => void;
   onDeleteNode?: (id: string) => void;
+  onMoveCaption?: (index: number, dx: number, dy: number) => void;
 }) {
   const { theme } = board;
   const flow = board.mode === "flow";
@@ -81,6 +83,26 @@ export default function BoardView({
   const E = (text: string, ...keys: (string | number)[]): ReactNode =>
     onEdit ? <Editable value={text} onChange={(v) => onEdit(keys, v)} /> : <>{text}</>;
 
+  // Drag a caption by its handle. The whole caption box follows; commit on release.
+  const captionDrag = (ev: ReactPointerEvent, index: number, baseDx: number, baseDy: number) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const box = (ev.currentTarget as HTMLElement).parentElement as HTMLElement;
+    const sx = ev.clientX, sy = ev.clientY;
+    let moved = false;
+    const move = (e: PointerEvent) => {
+      moved = true;
+      box.style.transform = `translate(${baseDx + (e.clientX - sx)}px, ${baseDy + (e.clientY - sy)}px)`;
+    };
+    const up = (e: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      if (moved) onMoveCaption?.(index, baseDx + (e.clientX - sx), baseDy + (e.clientY - sy));
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const sections = board.sections.map((sec, i) => {
     if (sec.type === "columns") {
       return (
@@ -109,7 +131,12 @@ export default function BoardView({
     }
     if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onDelete={onDeleteNode} selected={selectedNode === sec.node.id} />;
     return (
-      <div key={i} className={s.caption}>
+      <div key={i} className={s.caption} style={sec.dx || sec.dy ? { transform: `translate(${sec.dx ?? 0}px, ${sec.dy ?? 0}px)` } : undefined}>
+        {onMoveCaption && (
+          <span className={s.capHandle} title="拖动以移动这句说明" onPointerDown={(ev) => captionDrag(ev, i, sec.dx ?? 0, sec.dy ?? 0)}>
+            <Ico name="move" size={12} />
+          </span>
+        )}
         {E(sec.text, "sections", i, "text")}
       </div>
     );
