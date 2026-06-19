@@ -514,7 +514,7 @@ export default function EditorShell() {
             />
           </div>
         </div>
-        {showInspector && <Inspector board={board} setBoard={setBoard} />}
+        {showInspector && <Inspector board={board} setBoard={setBoard} selected={selected} onSet={onSet} />}
       </div>
 
       {showAi && (
