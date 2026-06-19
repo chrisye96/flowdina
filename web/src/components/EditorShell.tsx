@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import type { Board } from "@/lib/board";
 import { sampleBoard, flowBoard } from "@/lib/fixtures";
 import { exportPng, exportJson, parseBoard } from "@/lib/exporters";
+import { updateByPath, type Path } from "@/lib/path";
 import BoardView from "./BoardView";
 import Inspector from "./Inspector";
 import Ico from "./Ico";
@@ -19,6 +20,8 @@ export default function EditorShell() {
     setStatus(msg);
     setTimeout(() => setStatus(""), 1800);
   };
+
+  const onEdit = (path: Path, value: string) => setBoard((b) => updateByPath(b, path, value));
 
   const png = async () => {
     if (!captureRef.current) return;
@@ -84,7 +87,7 @@ export default function EditorShell() {
       <div className={s.body}>
         <div className={s.canvas}>
           <div ref={captureRef}>
-            <BoardView board={board} />
+            <BoardView board={board} onEdit={onEdit} />
           </div>
         </div>
         <Inspector board={board} setBoard={setBoard} />
