@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import type { Board, Edge } from "@/lib/board";
+import type { Board, Edge, Node } from "@/lib/board";
 import { sampleBoard, flowBoard } from "@/lib/fixtures";
 import { exportPng, exportJson, parseBoard } from "@/lib/exporters";
 import { encodeBoard, decodeBoard, saveState, loadState, type Mode } from "@/lib/share";
@@ -46,6 +46,21 @@ export default function EditorShell() {
   };
   const updateEdge = (id: string, patch: Partial<Edge>) =>
     setBoard((b) => ({ ...b, edges: b.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+
+  // Structural editing: remove a node (and any edges touching it), or append a fresh card.
+  const deleteNode = (id: string) =>
+    setBoard((b) => ({
+      ...b,
+      sections: b.sections
+        .map((sec) => (sec.type === "columns" ? { ...sec, columns: sec.columns.map((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== id) })) } : sec))
+        .filter((sec) => sec.type !== "node" || sec.node.id !== id),
+      edges: b.edges.filter((e) => e.from !== id && e.to !== id),
+    }));
+  const addNode = () => {
+    const node: Node = { id: crypto.randomUUID().slice(0, 8), blocks: [{ type: "titleRow", icon: { name: "square" }, text: "新步骤" }] };
+    setBoard((b) => ({ ...b, sections: [...b.sections, { type: "node", node }] }));
+    flash("已添加卡片 ✓");
+  };
 
   // Selection belongs to one board; dropping it on a mode switch avoids a dangling id.
   useEffect(() => setSelectedEdge(null), [mode]);
@@ -174,6 +189,10 @@ export default function EditorShell() {
           <Ico name="waypoints" size={15} color={connect ? "#534ab7" : undefined} />
           {connect ? "连接中…" : "连接"}
         </button>
+        <button className={s.btn} onClick={addNode} title="在末尾添加一张卡片">
+          <Ico name="square-plus" size={15} />
+          卡片
+        </button>
 
         <div className={s.spacer} />
         {status && <span className={s.status}>{status}</span>}
@@ -208,6 +227,7 @@ export default function EditorShell() {
               onSelectEdge={setSelectedEdge}
               onDeleteEdge={deleteEdge}
               onUpdateEdge={updateEdge}
+              onDeleteNode={deleteNode}
             />
           </div>
         </div>
