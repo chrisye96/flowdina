@@ -13,7 +13,14 @@ function download(href: string, name: string) {
 // connectors) and fonts more reliably than html2canvas.
 export async function exportPng(node: HTMLElement, name = "flowdina") {
   const bg = getComputedStyle(node).backgroundColor || "#eef1f5";
-  const url = await toPng(node, { pixelRatio: 2, backgroundColor: bg, cacheBust: true });
+  const url = await toPng(node, {
+    pixelRatio: 2,
+    backgroundColor: bg,
+    cacheBust: true,
+    // Skip always-visible editing chrome (e.g. the "add content" button). Hover-only
+    // affordances are already hidden because nothing is hovered during capture.
+    filter: (n) => !(n.nodeType === 1 && (n as HTMLElement).hasAttribute("data-export-hide")),
+  });
   download(url, `${name}.png`);
 }
 

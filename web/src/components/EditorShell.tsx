@@ -5,7 +5,8 @@ import type { Board, Edge, Node } from "@/lib/board";
 import { sampleBoard, flowBoard } from "@/lib/fixtures";
 import { exportPng, exportJson, parseBoard } from "@/lib/exporters";
 import { encodeBoard, decodeBoard, saveState, loadState, type Mode } from "@/lib/share";
-import { updateByPath, type Path } from "@/lib/path";
+import { getByPath, updateByPath, type Path } from "@/lib/path";
+import type { Block } from "@/lib/board";
 import BoardView from "./BoardView";
 import Inspector from "./Inspector";
 import AiPrompt from "./AiPrompt";
@@ -26,6 +27,20 @@ function findNode(b: Board, id: string): Node | null {
   return null;
 }
 const newId = () => crypto.randomUUID().slice(0, 8);
+
+// A sensible default for each block type the "add content" menu can insert.
+function newBlock(type: Block["type"]): Block {
+  switch (type) {
+    case "list": return { type: "list", items: ["新条目"] };
+    case "field": return { type: "field", label: "标签", value: "值" };
+    case "button": return { type: "button", style: "primary", text: "按钮" };
+    case "callout": return { type: "callout", kind: "note", icon: { name: "info" }, title: "提示", blocks: [{ type: "text", text: "说明文字" }] };
+    case "chip": return { type: "chip", icon: { name: "check" }, text: "标记" };
+    case "titleRow": return { type: "titleRow", icon: { name: "square" }, text: "标题" };
+    case "band": return { type: "band", text: "底栏文字" };
+    default: return { type: "text", text: "新文本" };
+  }
+}
 
 export default function EditorShell() {
   const [boards, setBoards] = useState<{ board: Board; flow: Board }>({ board: sampleBoard, flow: flowBoard });
@@ -86,6 +101,17 @@ export default function EditorShell() {
   const onEdit = (path: Path, value: string) => setBoard((b) => updateByPath(b, path, value), "edit:" + path.join("."));
   // Structural edits (list items, icon name/removal): each is its own undo step, no coalescing.
   const onSet = (path: Path, value: unknown) => setBoard((b) => updateByPath(b, path, value));
+  // Add / delete a block within a node's (or callout's) blocks array.
+  const addBlock = (blocksPath: Path, type: Block["type"]) =>
+    setBoard((b) => {
+      const arr = getByPath(b, blocksPath);
+      return Array.isArray(arr) ? updateByPath(b, blocksPath, [...arr, newBlock(type)]) : b;
+    });
+  const deleteBlock = (blocksPath: Path, index: number) =>
+    setBoard((b) => {
+      const arr = getByPath(b, blocksPath);
+      return Array.isArray(arr) ? updateByPath(b, blocksPath, arr.filter((_, i) => i !== index)) : b;
+    });
 
   // ---- connectors ----
   const addEdge = (from: string, to: string) => {
@@ -475,6 +501,8 @@ export default function EditorShell() {
               board={board}
               onEdit={onEdit}
               onSet={onSet}
+              onAddBlock={addBlock}
+              onDeleteBlock={deleteBlock}
               connect={connect}
               onConnect={addEdge}
               selected={selected}
