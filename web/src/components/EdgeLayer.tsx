@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { Edge, Theme } from "@/lib/board";
 import { computeEdge, arrowPoints, type EdgeLine, type Rect } from "@/lib/edges";
 import { tokenColor } from "@/lib/theme";
@@ -26,6 +26,8 @@ type Drawn = {
   headFrom: { x: number; y: number };
   tailFrom: { x: number; y: number };
   label?: string;
+  labelDx?: number;
+  labelDy?: number;
   mid: { x: number; y: number };
 };
 
@@ -50,7 +52,29 @@ export default function EdgeLayer({
 }) {
   const [drawn, setDrawn] = useState<Drawn[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const interactive = !!onSelect;
+
+  // Drag a label to reposition it. A pointer-down that doesn't move is a click → select.
+  const startLabelDrag = (ev: ReactPointerEvent, id: string, baseDx: number, baseDy: number) => {
+    if (!interactive) return;
+    ev.stopPropagation();
+    const sx = ev.clientX, sy = ev.clientY;
+    let moved = false;
+    const move = (e: PointerEvent) => {
+      if (Math.abs(e.clientX - sx) > 2 || Math.abs(e.clientY - sy) > 2) moved = true;
+      setDrag({ id, dx: baseDx + (e.clientX - sx), dy: baseDy + (e.clientY - sy) });
+    };
+    const up = (e: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setDrag(null);
+      if (moved) onUpdate?.(id, { labelDx: baseDx + (e.clientX - sx), labelDy: baseDy + (e.clientY - sy) });
+      else onSelect?.(id);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   useEffect(() => {
     const board = boardRef.current;
@@ -70,6 +94,8 @@ export default function EdgeLayer({
           dash: e.dash,
           arrow: e.arrow ?? "end",
           label: e.label,
+          labelDx: e.labelDx,
+          labelDy: e.labelDy,
           ...g,
         });
       }
@@ -118,14 +144,24 @@ export default function EdgeLayer({
             <path d={p.d} fill="none" stroke={stroke} strokeWidth={sel ? 3 : 2} strokeDasharray={p.dash ? "6 5" : undefined} />
             {p.arrow !== "none" && <polygon points={arrowPoints(p.p2, p.headFrom)} fill={stroke} />}
             {p.arrow === "both" && <polygon points={arrowPoints(p.p1, p.tailFrom)} fill={stroke} />}
-            {p.label && !sel && (
-              <>
-                <rect x={p.mid.x - lw / 2} y={p.mid.y - 8} width={lw} height={16} rx={4} fill="var(--page-bg)" />
-                <text x={p.mid.x} y={p.mid.y} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600} fill="#334155">
-                  {p.label}
-                </text>
-              </>
-            )}
+            {p.label &&
+              (() => {
+                const off = drag && drag.id === p.id ? drag : { dx: p.labelDx ?? 0, dy: p.labelDy ?? 0 };
+                const lx = p.mid.x + off.dx, ly = p.mid.y + off.dy;
+                const moved = off.dx !== 0 || off.dy !== 0;
+                return (
+                  <g
+                    style={{ pointerEvents: interactive ? "auto" : "none", cursor: interactive ? "move" : "default" }}
+                    onPointerDown={(ev) => startLabelDrag(ev, p.id, off.dx, off.dy)}
+                  >
+                    {moved && <line x1={p.mid.x} y1={p.mid.y} x2={lx} y2={ly} stroke={stroke} strokeWidth={1} strokeDasharray="2 3" opacity={0.5} />}
+                    <rect x={lx - lw / 2} y={ly - 8} width={lw} height={16} rx={4} fill="var(--page-bg)" />
+                    <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600} fill={sel ? "#1d4ed8" : "#334155"}>
+                      {p.label}
+                    </text>
+                  </g>
+                );
+              })()}
             {sel && e && (
               <foreignObject x={p.mid.x - 160} y={p.mid.y - 48} width={320} height={42} style={{ overflow: "visible", pointerEvents: "none" }}>
                 <div className={s.edgeBar} style={{ pointerEvents: "auto" }} onClick={(ev) => ev.stopPropagation()}>

@@ -90,6 +90,9 @@ export type Edge = {
   arrow?: "end" | "both" | "none";
   dash?: boolean;
   label?: string;
+  // Label offset from the wire midpoint (px), so text can be dragged off a crossing.
+  labelDx?: number;
+  labelDy?: number;
   color?: ColorToken;
 };
 
