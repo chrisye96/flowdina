@@ -1,6 +1,11 @@
 // A path addresses a value inside the Board tree (object keys and array indices).
 export type Path = (string | number)[];
 
+// Read the value at `path` (undefined if any step is missing).
+export function getByPath(obj: unknown, path: Path): unknown {
+  return path.reduce<unknown>((o, k) => (o == null ? undefined : (o as Record<string | number, unknown>)[k]), obj);
+}
+
 // Immutable deep update: returns a new Board with the value at `path` replaced.
 export function updateByPath<T>(obj: T, path: Path, value: unknown): T {
   if (path.length === 0) return value as T;

@@ -1,9 +1,10 @@
 "use client";
 
-import type { Node, Theme } from "@/lib/board";
+import type { Block, Node, Theme } from "@/lib/board";
 import type { Path } from "@/lib/path";
 import { tokenColor } from "@/lib/theme";
 import BlockView from "./BlockView";
+import AddBlockMenu from "./AddBlockMenu";
 import Editable from "./Editable";
 import EditableIcon from "./EditableIcon";
 import Ico from "./Ico";
@@ -22,6 +23,8 @@ export default function NodeView({
   path,
   onEdit,
   onSet,
+  onAddBlock,
+  onDeleteBlock,
   onDelete,
   selected = false,
 }: {
@@ -30,6 +33,8 @@ export default function NodeView({
   path: Path;
   onEdit?: (p: Path, v: string) => void;
   onSet?: (p: Path, v: unknown) => void;
+  onAddBlock?: (blocksPath: Path, type: Block["type"]) => void;
+  onDeleteBlock?: (blocksPath: Path, index: number) => void;
   onDelete?: (id: string) => void;
   selected?: boolean;
 }) {
@@ -76,8 +81,24 @@ export default function NodeView({
         </div>
       )}
       {node.blocks.map((b, i) => (
-        <BlockView key={i} block={b} theme={theme} path={[...path, "blocks", i]} onEdit={onEdit} onSet={onSet} />
+        <div key={i} className={s.blockRow}>
+          {onDeleteBlock && (
+            <button
+              className={s.blockDel}
+              title="删除此项"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onDeleteBlock([...path, "blocks"], i);
+              }}
+            >
+              ×
+            </button>
+          )}
+          <BlockView block={b} theme={theme} path={[...path, "blocks", i]} onEdit={onEdit} onSet={onSet} />
+        </div>
       ))}
+      {onAddBlock && <AddBlockMenu onAdd={(type) => onAddBlock([...path, "blocks"], type)} />}
     </div>
   );
 }
