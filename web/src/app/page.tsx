@@ -1,5 +1,5 @@
 import BoardView from "@/components/BoardView";
-import { sampleBoard } from "@/lib/fixtures";
+import { sampleBoard, flowBoard } from "@/lib/fixtures";
 
 export default function Home() {
   return (
@@ -9,11 +9,14 @@ export default function Home() {
         background: "#f3f4f6",
         padding: 22,
         display: "flex",
-        justifyContent: "center",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 32,
         overflow: "auto",
       }}
     >
       <BoardView board={sampleBoard} />
+      <BoardView board={flowBoard} />
     </main>
   );
 }
