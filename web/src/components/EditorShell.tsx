@@ -5,6 +5,7 @@ import type { Board } from "@/lib/board";
 import { sampleBoard, flowBoard } from "@/lib/fixtures";
 import { exportPng, exportJson, parseBoard } from "@/lib/exporters";
 import BoardView from "./BoardView";
+import Inspector from "./Inspector";
 import Ico from "./Ico";
 import s from "./shell.module.css";
 
@@ -80,10 +81,13 @@ export default function EditorShell() {
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={onImport} />
       </header>
 
-      <div className={s.canvas}>
-        <div ref={captureRef}>
-          <BoardView board={board} />
+      <div className={s.body}>
+        <div className={s.canvas}>
+          <div ref={captureRef}>
+            <BoardView board={board} />
+          </div>
         </div>
+        <Inspector board={board} setBoard={setBoard} />
       </div>
     </div>
   );
