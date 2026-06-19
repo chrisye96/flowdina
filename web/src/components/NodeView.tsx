@@ -21,13 +21,16 @@ export default function NodeView({
   path,
   onEdit,
   onDelete,
+  selected = false,
 }: {
   node: Node;
   theme: Theme;
   path: Path;
   onEdit?: (p: Path, v: string) => void;
   onDelete?: (id: string) => void;
+  selected?: boolean;
 }) {
+  const sel = selected ? " " + s.nodeSelected : "";
   const delBtn = onDelete && (
     <button
       className={s.nodeDel}
@@ -47,7 +50,7 @@ export default function NodeView({
     const text = title?.type === "titleRow" ? title.text : "";
     const icon = title?.type === "titleRow" ? title.icon : undefined;
     return (
-      <div data-node-id={node.id} className={s.pill} style={{ background: tokenColor(node.pillColor ?? "blue", theme) }}>
+      <div data-node-id={node.id} className={s.pill + sel} style={{ background: tokenColor(node.pillColor ?? "blue", theme) }}>
         {delBtn}
         {icon && <Ico name={icon.name} size={18} />}
         <span>{onEdit && ti >= 0 ? <Editable value={text} onChange={(v) => onEdit([...path, "blocks", ti, "text"], v)} /> : text}</span>
@@ -56,7 +59,7 @@ export default function NodeView({
   }
 
   return (
-    <div data-node-id={node.id} className={`${s.card} ${node.accent ? ACCENT[node.accent] ?? "" : ""}`}>
+    <div data-node-id={node.id} className={`${s.card} ${node.accent ? ACCENT[node.accent] ?? "" : ""}${sel}`}>
       {delBtn}
       {node.tag && <span className={s.tag}>{onEdit ? <Editable value={node.tag} onChange={(v) => onEdit([...path, "tag"], v)} /> : node.tag}</span>}
       {node.header && (

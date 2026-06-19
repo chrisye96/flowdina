@@ -10,13 +10,15 @@ import Editable from "./Editable";
 import Ico from "./Ico";
 import s from "./board.module.css";
 
+type Sel = { kind: "node" | "edge"; id: string } | null;
+
 export default function BoardView({
   board,
   onEdit,
   connect = false,
   onConnect,
-  selectedEdge = null,
-  onSelectEdge,
+  selected = null,
+  onSelect,
   onDeleteEdge,
   onUpdateEdge,
   onDeleteNode,
@@ -26,8 +28,8 @@ export default function BoardView({
   // Connector editing (editor only). When omitted the board is read-only.
   connect?: boolean;
   onConnect?: (from: string, to: string) => void;
-  selectedEdge?: string | null;
-  onSelectEdge?: (id: string | null) => void;
+  selected?: Sel;
+  onSelect?: (s: Sel) => void;
   onDeleteEdge?: (id: string) => void;
   onUpdateEdge?: (id: string, patch: Partial<Edge>) => void;
   onDeleteNode?: (id: string) => void;
@@ -35,6 +37,8 @@ export default function BoardView({
   const { theme } = board;
   const flow = board.mode === "flow";
   const boardRef = useRef<HTMLDivElement>(null);
+  const selectedEdge = selected?.kind === "edge" ? selected.id : null;
+  const selectedNode = selected?.kind === "node" ? selected.id : null;
   // The pending source lives in a ref, not state: between the two clicks nothing
   // re-renders, so toggling the highlight class directly survives until the edge lands.
   const pendingRef = useRef<string | null>(null);
@@ -67,8 +71,11 @@ export default function BoardView({
       }
       return;
     }
-    // Clicking empty canvas (edge clicks stopPropagation) clears the selection.
-    onSelectEdge?.(null);
+    // Outside connect mode: click a block to select it, click empty canvas to clear.
+    // (Edge clicks stopPropagation in EdgeLayer, so they never reach here.)
+    const el = (ev.target as HTMLElement).closest("[data-node-id]");
+    const id = el?.getAttribute("data-node-id") ?? null;
+    onSelect?.(id ? { kind: "node", id } : null);
   };
 
   const E = (text: string, ...keys: (string | number)[]): ReactNode =>
@@ -92,7 +99,7 @@ export default function BoardView({
                   </div>
                 )}
                 {col.nodes.map((n, nIdx) => (
-                  <NodeView key={n.id} node={n} theme={theme} path={[...cp, "nodes", nIdx]} onEdit={onEdit} onDelete={onDeleteNode} />
+                  <NodeView key={n.id} node={n} theme={theme} path={[...cp, "nodes", nIdx]} onEdit={onEdit} onDelete={onDeleteNode} selected={selectedNode === n.id} />
                 ))}
               </div>
             );
@@ -100,7 +107,7 @@ export default function BoardView({
         </div>
       );
     }
-    if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onDelete={onDeleteNode} />;
+    if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onDelete={onDeleteNode} selected={selectedNode === sec.node.id} />;
     return (
       <div key={i} className={s.caption}>
         {E(sec.text, "sections", i, "text")}
@@ -137,7 +144,7 @@ export default function BoardView({
         boardRef={boardRef}
         theme={theme}
         selected={selectedEdge}
-        onSelect={onSelectEdge}
+        onSelect={(id) => onSelect?.(id ? { kind: "edge", id } : null)}
         onDelete={onDeleteEdge}
         onUpdate={onUpdateEdge}
       />
