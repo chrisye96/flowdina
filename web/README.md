@@ -16,23 +16,41 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## AI 生成 (Vercel AI Gateway)
+## AI 生成 (configurable providers)
 
-The "AI 生成" button generates a diagram from a plain-language description. It calls
-`POST /api/generate`, which routes a Claude model through the
-[Vercel AI Gateway](https://vercel.com/docs/ai-gateway). The route never embeds a key —
-it reads one from the environment:
+The "AI 生成" button generates a diagram from a plain-language description via
+`POST /api/generate`. Keys are read from the environment — the route never embeds one.
+
+Configure **1–3 OpenAI-compatible providers** with a generic numbered convention (no
+provider name is hardcoded, so Gemini, DeepSeek, OpenAI, Together, etc. all drop in):
 
 ```bash
 # web/.env.local
-AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key
-# optional — defaults to anthropic/claude-sonnet-4.6
-AI_MODEL=anthropic/claude-sonnet-4.6
+AI_PROVIDER_1_NAME=Gemini
+AI_PROVIDER_1_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+AI_PROVIDER_1_KEY=your_gemini_key
+AI_PROVIDER_1_MODEL=gemini-2.0-flash
+
+AI_PROVIDER_2_NAME=DeepSeek
+AI_PROVIDER_2_BASE_URL=https://api.deepseek.com/v1
+AI_PROVIDER_2_KEY=your_deepseek_key
+AI_PROVIDER_2_MODEL=deepseek-chat
+
+# AI_PROVIDER_3_* for a third
 ```
 
-On Vercel, the gateway is authenticated automatically via the project's OIDC token, so no
-key is needed in production. Without a key locally, the editor shows a friendly
-"AI 未配置" message instead of failing.
+When more than one is configured, the generate dialog shows a model picker
+(`GET /api/providers` returns names/ids only — never keys).
+
+Optionally, the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) is still supported
+as an additional provider:
+
+```bash
+AI_GATEWAY_API_KEY=your_gateway_key
+AI_MODEL=anthropic/claude-sonnet-4.6   # optional, this is the default
+```
+
+With nothing configured, the editor shows a friendly "AI 未配置" message instead of failing.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
