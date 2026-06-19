@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import type { Board } from "@/lib/board";
+import type { Board, Edge } from "@/lib/board";
 import { sampleBoard, flowBoard } from "@/lib/fixtures";
 import { exportPng, exportJson, parseBoard } from "@/lib/exporters";
 import { encodeBoard, decodeBoard, saveState, loadState, type Mode } from "@/lib/share";
@@ -44,6 +44,8 @@ export default function EditorShell() {
     setBoard((b) => ({ ...b, edges: b.edges.filter((e) => e.id !== id) }));
     setSelectedEdge(null);
   };
+  const updateEdge = (id: string, patch: Partial<Edge>) =>
+    setBoard((b) => ({ ...b, edges: b.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
 
   // Selection belongs to one board; dropping it on a mode switch avoids a dangling id.
   useEffect(() => setSelectedEdge(null), [mode]);
@@ -205,6 +207,7 @@ export default function EditorShell() {
               selectedEdge={selectedEdge}
               onSelectEdge={setSelectedEdge}
               onDeleteEdge={deleteEdge}
+              onUpdateEdge={updateEdge}
             />
           </div>
         </div>

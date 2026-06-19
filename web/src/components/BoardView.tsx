@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
-import type { Board } from "@/lib/board";
+import type { Board, Edge } from "@/lib/board";
 import type { Path } from "@/lib/path";
 import { themeVars, tokenColor } from "@/lib/theme";
 import NodeView from "./NodeView";
@@ -18,6 +18,7 @@ export default function BoardView({
   selectedEdge = null,
   onSelectEdge,
   onDeleteEdge,
+  onUpdateEdge,
 }: {
   board: Board;
   onEdit?: (p: Path, v: string) => void;
@@ -27,6 +28,7 @@ export default function BoardView({
   selectedEdge?: string | null;
   onSelectEdge?: (id: string | null) => void;
   onDeleteEdge?: (id: string) => void;
+  onUpdateEdge?: (id: string, patch: Partial<Edge>) => void;
 }) {
   const { theme } = board;
   const flow = board.mode === "flow";
@@ -128,7 +130,15 @@ export default function BoardView({
 
       {flow ? <div className={s.flowCol}>{sections}</div> : sections}
 
-      <EdgeLayer edges={board.edges} boardRef={boardRef} theme={theme} selected={selectedEdge} onSelect={onSelectEdge} onDelete={onDeleteEdge} />
+      <EdgeLayer
+        edges={board.edges}
+        boardRef={boardRef}
+        theme={theme}
+        selected={selectedEdge}
+        onSelect={onSelectEdge}
+        onDelete={onDeleteEdge}
+        onUpdate={onUpdateEdge}
+      />
     </div>
   );
 }

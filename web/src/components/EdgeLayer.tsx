@@ -2,14 +2,18 @@
 
 import { useEffect, useState, type RefObject } from "react";
 import type { Edge, Theme } from "@/lib/board";
-import { computeEdge, arrowPoints, type Rect } from "@/lib/edges";
+import { computeEdge, arrowPoints, type EdgeLine, type Rect } from "@/lib/edges";
 import { tokenColor } from "@/lib/theme";
+import s from "./board.module.css";
 
 function rectIn(el: Element, b: DOMRect): Rect {
   const r = el.getBoundingClientRect();
   const x = r.left - b.left, y = r.top - b.top;
   return { left: x, top: y, right: x + r.width, bottom: y + r.height, cx: x + r.width / 2, cy: y + r.height / 2 };
 }
+
+const LINES: { v: EdgeLine; t: string }[] = [{ v: "straight", t: "直" }, { v: "elbow", t: "折" }, { v: "curve", t: "曲" }];
+const ARROWS: { v: NonNullable<Edge["arrow"]>; t: string }[] = [{ v: "end", t: "→" }, { v: "both", t: "↔" }, { v: "none", t: "—" }];
 
 type Drawn = {
   id: string;
@@ -32,6 +36,7 @@ export default function EdgeLayer({
   selected,
   onSelect,
   onDelete,
+  onUpdate,
 }: {
   edges: Edge[];
   boardRef: RefObject<HTMLDivElement | null>;
@@ -41,6 +46,7 @@ export default function EdgeLayer({
   selected?: string | null;
   onSelect?: (id: string | null) => void;
   onDelete?: (id: string) => void;
+  onUpdate?: (id: string, patch: Partial<Edge>) => void;
 }) {
   const [drawn, setDrawn] = useState<Drawn[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -92,6 +98,7 @@ export default function EdgeLayer({
         const sel = interactive && selected === p.id;
         const stroke = sel ? theme.accent : p.color;
         const lw = p.label ? p.label.length * 7 + 12 : 0;
+        const e = sel ? edges.find((x) => x.id === p.id) : undefined;
         return (
           <g key={p.id}>
             {/* Fat transparent hit-area: catches clicks on (and near) the wire while gaps stay click-through to the cards. */}
@@ -119,12 +126,36 @@ export default function EdgeLayer({
                 </text>
               </>
             )}
-            {sel && (
-              <g style={{ pointerEvents: "auto", cursor: "pointer" }} onClick={(ev) => { ev.stopPropagation(); onDelete?.(p.id); }}>
-                <circle cx={p.mid.x} cy={p.mid.y} r={9} fill="#fff" stroke={theme.accent} strokeWidth={1.5} />
-                <line x1={p.mid.x - 3.5} y1={p.mid.y - 3.5} x2={p.mid.x + 3.5} y2={p.mid.y + 3.5} stroke={theme.accent} strokeWidth={1.6} />
-                <line x1={p.mid.x + 3.5} y1={p.mid.y - 3.5} x2={p.mid.x - 3.5} y2={p.mid.y + 3.5} stroke={theme.accent} strokeWidth={1.6} />
-              </g>
+            {sel && e && (
+              <foreignObject x={p.mid.x - 160} y={p.mid.y - 48} width={320} height={42} style={{ overflow: "visible", pointerEvents: "none" }}>
+                <div className={s.edgeBar} style={{ pointerEvents: "auto" }} onClick={(ev) => ev.stopPropagation()}>
+                  {LINES.map((l) => (
+                    <button key={l.v} className={`${s.edgeBtn} ${(e.line ?? "elbow") === l.v ? s.edgeOn : ""}`} onClick={() => onUpdate?.(p.id, { line: l.v })} title="线型">
+                      {l.t}
+                    </button>
+                  ))}
+                  <span className={s.edgeSep} />
+                  {ARROWS.map((a) => (
+                    <button key={a.v} className={`${s.edgeBtn} ${(e.arrow ?? "end") === a.v ? s.edgeOn : ""}`} onClick={() => onUpdate?.(p.id, { arrow: a.v })} title="箭头">
+                      {a.t}
+                    </button>
+                  ))}
+                  <span className={s.edgeSep} />
+                  <button className={`${s.edgeBtn} ${e.dash ? s.edgeOn : ""}`} onClick={() => onUpdate?.(p.id, { dash: !e.dash })} title="虚线">
+                    虚
+                  </button>
+                  <input
+                    className={s.edgeInput}
+                    value={e.label ?? ""}
+                    placeholder="标签"
+                    onChange={(ev) => onUpdate?.(p.id, { label: ev.target.value || undefined })}
+                  />
+                  <span className={s.edgeSep} />
+                  <button className={s.edgeDel} onClick={() => onDelete?.(p.id)} title="删除连线">
+                    删除
+                  </button>
+                </div>
+              </foreignObject>
             )}
           </g>
         );
