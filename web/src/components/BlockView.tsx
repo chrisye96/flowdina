@@ -1,19 +1,37 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { Block, Theme } from "@/lib/board";
+import type { Block, Icon, Theme } from "@/lib/board";
 import type { Path } from "@/lib/path";
 import { tokenColor } from "@/lib/theme";
 import Editable from "./Editable";
+import EditableIcon from "./EditableIcon";
+import ListEditor from "./ListEditor";
 import Ico from "./Ico";
 import s from "./board.module.css";
 
-type Props = { block: Block; theme: Theme; path: Path; onEdit?: (p: Path, v: string) => void };
+type Props = {
+  block: Block;
+  theme: Theme;
+  path: Path;
+  onEdit?: (p: Path, v: string) => void;
+  onSet?: (p: Path, v: unknown) => void;
+};
 
-export default function BlockView({ block, theme, path, onEdit }: Props) {
+export default function BlockView({ block, theme, path, onEdit, onSet }: Props) {
   // editable text, or plain text when not in an editor
   const E = (text: string, ...keys: (string | number)[]): ReactNode =>
     onEdit ? <Editable value={text} onChange={(v) => onEdit([...path, ...keys], v)} /> : <>{text}</>;
+
+  // clickable icon (change / remove) when editing, else a static icon
+  const I = (icon: Icon | undefined, key: string, size?: number): ReactNode => {
+    if (!icon) return null;
+    return onSet ? (
+      <EditableIcon name={icon.name} size={size} onChange={(n) => onSet([...path, key], n ? { name: n } : undefined)} />
+    ) : (
+      <Ico name={icon.name} size={size} />
+    );
+  };
 
   switch (block.type) {
     case "titleRow":
@@ -21,7 +39,7 @@ export default function BlockView({ block, theme, path, onEdit }: Props) {
         <div className={s.titleRow}>
           {block.icon && (
             <div className={s.icon} style={{ background: tokenColor(block.iconBg ?? "blue", theme) }}>
-              <Ico name={block.icon.name} />
+              {I(block.icon, "icon")}
             </div>
           )}
           <div className={s.cardTitle}>{E(block.text, "text")}</div>
@@ -37,10 +55,12 @@ export default function BlockView({ block, theme, path, onEdit }: Props) {
       );
 
     case "list":
-      return (
+      return onSet ? (
+        <ListEditor className={s.list} items={block.items} onChange={(items) => onSet([...path, "items"], items)} />
+      ) : (
         <ul className={s.list}>
           {block.items.map((it, i) => (
-            <li key={i}>{E(it, "items", i)}</li>
+            <li key={i}>{it}</li>
           ))}
         </ul>
       );
@@ -60,9 +80,9 @@ export default function BlockView({ block, theme, path, onEdit }: Props) {
       const cls = block.style === "primary" ? s.btnPrimary : block.style === "danger" ? s.btnDanger : s.btnOutline;
       return (
         <div className={`${s.btn} ${cls} ${block.trailingIcon ? s.btnSpace : ""}`}>
-          {block.icon && <Ico name={block.icon.name} size={14} />}
+          {I(block.icon, "icon", 14)}
           <span>{E(block.text, "text")}</span>
-          {block.trailingIcon && <Ico name={block.trailingIcon.name} size={16} />}
+          {I(block.trailingIcon, "trailingIcon", 16)}
         </div>
       );
     }
@@ -72,11 +92,11 @@ export default function BlockView({ block, theme, path, onEdit }: Props) {
       return (
         <div className={warn ? s.warn : s.note}>
           <div className={`${s.calloutHead} ${warn ? s.warnHead : ""}`}>
-            {block.icon && <Ico name={block.icon.name} size={14} />}
+            {I(block.icon, "icon", 14)}
             {block.title && <span>{E(block.title, "title")}</span>}
           </div>
           {block.blocks.map((b, i) => (
-            <BlockView key={i} block={b} theme={theme} path={[...path, "blocks", i]} onEdit={onEdit} />
+            <BlockView key={i} block={b} theme={theme} path={[...path, "blocks", i]} onEdit={onEdit} onSet={onSet} />
           ))}
         </div>
       );
@@ -85,7 +105,7 @@ export default function BlockView({ block, theme, path, onEdit }: Props) {
     case "chip":
       return (
         <div className={s.chip}>
-          {block.icon && <Ico name={block.icon.name} size={13} />}
+          {I(block.icon, "icon", 13)}
           <span>{E(block.text, "text")}</span>
         </div>
       );

@@ -15,6 +15,7 @@ type Sel = { kind: "node" | "edge" | "caption"; id: string } | null;
 export default function BoardView({
   board,
   onEdit,
+  onSet,
   connect = false,
   onConnect,
   selected = null,
@@ -26,6 +27,7 @@ export default function BoardView({
 }: {
   board: Board;
   onEdit?: (p: Path, v: string) => void;
+  onSet?: (p: Path, v: unknown) => void;
   // Connector editing (editor only). When omitted the board is read-only.
   connect?: boolean;
   onConnect?: (from: string, to: string) => void;
@@ -125,7 +127,7 @@ export default function BoardView({
                   </div>
                 )}
                 {col.nodes.map((n, nIdx) => (
-                  <NodeView key={n.id} node={n} theme={theme} path={[...cp, "nodes", nIdx]} onEdit={onEdit} onDelete={onDeleteNode} selected={selectedNode === n.id} />
+                  <NodeView key={n.id} node={n} theme={theme} path={[...cp, "nodes", nIdx]} onEdit={onEdit} onSet={onSet} onDelete={onDeleteNode} selected={selectedNode === n.id} />
                 ))}
               </div>
             );
@@ -133,7 +135,7 @@ export default function BoardView({
         </div>
       );
     }
-    if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onDelete={onDeleteNode} selected={selectedNode === sec.node.id} />;
+    if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onSet={onSet} onDelete={onDeleteNode} selected={selectedNode === sec.node.id} />;
     const capSel = selected?.kind === "caption" && Number(selected.id) === i;
     return (
       <div

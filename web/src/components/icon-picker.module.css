@@ -1,0 +1,10 @@
+.trigger { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 5px; }
+.trigger:hover { outline: 2px solid var(--chrome-control, #d1d5db); outline-offset: 1px; }
+
+.pop { position: fixed; z-index: 60; width: 228px; background: var(--chrome-surface, #fff); border: 1px solid var(--chrome-border, #e5e7eb); border-radius: 12px; box-shadow: 0 16px 40px rgba(16, 24, 40, .22); padding: 8px; }
+.grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-height: 168px; overflow-y: auto; }
+.cell { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; border: none; border-radius: 6px; background: transparent; color: var(--chrome-text-soft, #374151); cursor: pointer; padding: 0; }
+.cell:hover { background: var(--chrome-hover, #f3f4f6); }
+.cell.on { background: #eef0fb; color: #534ab7; }
+.remove { display: block; width: 100%; margin-top: 6px; padding: 6px; border: 1px solid var(--chrome-control, #d1d5db); border-radius: 8px; background: transparent; color: #dc2626; font-size: 12.5px; cursor: pointer; }
+.remove:hover { background: #fee2e2; border-color: #fecaca; }

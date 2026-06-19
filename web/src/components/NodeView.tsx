@@ -5,6 +5,7 @@ import type { Path } from "@/lib/path";
 import { tokenColor } from "@/lib/theme";
 import BlockView from "./BlockView";
 import Editable from "./Editable";
+import EditableIcon from "./EditableIcon";
 import Ico from "./Ico";
 import s from "./board.module.css";
 
@@ -20,6 +21,7 @@ export default function NodeView({
   theme,
   path,
   onEdit,
+  onSet,
   onDelete,
   selected = false,
 }: {
@@ -27,6 +29,7 @@ export default function NodeView({
   theme: Theme;
   path: Path;
   onEdit?: (p: Path, v: string) => void;
+  onSet?: (p: Path, v: unknown) => void;
   onDelete?: (id: string) => void;
   selected?: boolean;
 }) {
@@ -52,7 +55,12 @@ export default function NodeView({
     return (
       <div data-node-id={node.id} className={s.pill + sel} style={{ background: tokenColor(node.pillColor ?? "blue", theme) }}>
         {delBtn}
-        {icon && <Ico name={icon.name} size={18} />}
+        {icon &&
+          (onSet && ti >= 0 ? (
+            <EditableIcon name={icon.name} size={18} onChange={(n) => onSet([...path, "blocks", ti, "icon"], n ? { name: n } : undefined)} />
+          ) : (
+            <Ico name={icon.name} size={18} />
+          ))}
         <span>{onEdit && ti >= 0 ? <Editable value={text} onChange={(v) => onEdit([...path, "blocks", ti, "text"], v)} /> : text}</span>
       </div>
     );
@@ -68,7 +76,7 @@ export default function NodeView({
         </div>
       )}
       {node.blocks.map((b, i) => (
-        <BlockView key={i} block={b} theme={theme} path={[...path, "blocks", i]} onEdit={onEdit} />
+        <BlockView key={i} block={b} theme={theme} path={[...path, "blocks", i]} onEdit={onEdit} onSet={onSet} />
       ))}
     </div>
   );
