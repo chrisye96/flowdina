@@ -15,6 +15,8 @@ export default function EditorShell() {
   const [boards, setBoards] = useState<{ board: Board; flow: Board }>({ board: sampleBoard, flow: flowBoard });
   const [mode, setMode] = useState<Mode>("board");
   const [status, setStatus] = useState("");
+  const [connect, setConnect] = useState(false);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const ready = useRef(false);
@@ -29,6 +31,43 @@ export default function EditorShell() {
   };
 
   const onEdit = (path: Path, value: string) => setBoard((b) => updateByPath(b, path, value));
+
+  // Connector editing: add (connect two blocks), delete the selected edge.
+  const addEdge = (from: string, to: string) => {
+    setBoard((b) => {
+      if (from === to || b.edges.some((e) => e.from === from && e.to === to)) return b;
+      return { ...b, edges: [...b.edges, { id: crypto.randomUUID().slice(0, 8), from, to, line: "elbow", arrow: "end" }] };
+    });
+    flash("已连接 ✓");
+  };
+  const deleteEdge = (id: string) => {
+    setBoard((b) => ({ ...b, edges: b.edges.filter((e) => e.id !== id) }));
+    setSelectedEdge(null);
+  };
+
+  // Selection belongs to one board; dropping it on a mode switch avoids a dangling id.
+  useEffect(() => setSelectedEdge(null), [mode]);
+
+  // Esc exits connect/selection; Delete removes the selected edge (unless typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedEdge(null);
+        setConnect(false);
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedEdge) {
+        const ae = document.activeElement as HTMLElement | null;
+        if (ae && (ae.isContentEditable || ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) return;
+        e.preventDefault();
+        deleteEdge(selectedEdge);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // selectedEdge captures the active board's setter freshly (selection resets on mode change).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEdge]);
 
   // Restore: a shared hash wins, else localStorage, else the default fixtures.
   useEffect(() => {
@@ -65,8 +104,11 @@ export default function EditorShell() {
 
   const png = async () => {
     if (!captureRef.current) return;
+    setSelectedEdge(null); // keep the selection chrome out of the export
     flash("导出中…");
     try {
+      // Let the deselect re-render paint before the capture reads the DOM.
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       await exportPng(captureRef.current);
       flash("已导出 PNG ✓");
     } catch {
@@ -119,6 +161,18 @@ export default function EditorShell() {
           </button>
         </div>
 
+        <button
+          className={connect ? s.toggleOn : s.btn}
+          onClick={() => {
+            setConnect((v) => !v);
+            setSelectedEdge(null);
+          }}
+          title="连接模式：依次点两个方块即可连线"
+        >
+          <Ico name="waypoints" size={15} color={connect ? "#534ab7" : undefined} />
+          {connect ? "连接中…" : "连接"}
+        </button>
+
         <div className={s.spacer} />
         {status && <span className={s.status}>{status}</span>}
         <button className={s.btn} onClick={() => fileRef.current?.click()}>
@@ -143,7 +197,15 @@ export default function EditorShell() {
       <div className={s.body}>
         <div className={s.canvas}>
           <div ref={captureRef}>
-            <BoardView board={board} onEdit={onEdit} />
+            <BoardView
+              board={board}
+              onEdit={onEdit}
+              connect={connect}
+              onConnect={addEdge}
+              selectedEdge={selectedEdge}
+              onSelectEdge={setSelectedEdge}
+              onDeleteEdge={deleteEdge}
+            />
           </div>
         </div>
         <Inspector board={board} setBoard={setBoard} />

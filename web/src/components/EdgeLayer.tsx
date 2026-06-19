@@ -29,13 +29,22 @@ export default function EdgeLayer({
   edges,
   boardRef,
   theme,
+  selected,
+  onSelect,
+  onDelete,
 }: {
   edges: Edge[];
   boardRef: RefObject<HTMLDivElement | null>;
   theme: Theme;
+  // Editing handlers are optional: when absent the layer is a static render
+  // (export, read-only) and never captures pointer events.
+  selected?: string | null;
+  onSelect?: (id: string | null) => void;
+  onDelete?: (id: string) => void;
 }) {
   const [drawn, setDrawn] = useState<Drawn[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const interactive = !!onSelect;
 
   useEffect(() => {
     const board = boardRef.current;
@@ -80,19 +89,42 @@ export default function EdgeLayer({
       aria-hidden="true"
     >
       {drawn.map((p) => {
+        const sel = interactive && selected === p.id;
+        const stroke = sel ? theme.accent : p.color;
         const lw = p.label ? p.label.length * 7 + 12 : 0;
         return (
           <g key={p.id}>
-            <path d={p.d} fill="none" stroke={p.color} strokeWidth={2} strokeDasharray={p.dash ? "6 5" : undefined} />
-            {p.arrow !== "none" && <polygon points={arrowPoints(p.p2, p.headFrom)} fill={p.color} />}
-            {p.arrow === "both" && <polygon points={arrowPoints(p.p1, p.tailFrom)} fill={p.color} />}
-            {p.label && (
+            {/* Fat transparent hit-area: catches clicks on (and near) the wire while gaps stay click-through to the cards. */}
+            {interactive && (
+              <path
+                d={p.d}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={14}
+                style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  onSelect?.(p.id);
+                }}
+              />
+            )}
+            <path d={p.d} fill="none" stroke={stroke} strokeWidth={sel ? 3 : 2} strokeDasharray={p.dash ? "6 5" : undefined} />
+            {p.arrow !== "none" && <polygon points={arrowPoints(p.p2, p.headFrom)} fill={stroke} />}
+            {p.arrow === "both" && <polygon points={arrowPoints(p.p1, p.tailFrom)} fill={stroke} />}
+            {p.label && !sel && (
               <>
                 <rect x={p.mid.x - lw / 2} y={p.mid.y - 8} width={lw} height={16} rx={4} fill="var(--page-bg)" />
                 <text x={p.mid.x} y={p.mid.y} textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600} fill="#334155">
                   {p.label}
                 </text>
               </>
+            )}
+            {sel && (
+              <g style={{ pointerEvents: "auto", cursor: "pointer" }} onClick={(ev) => { ev.stopPropagation(); onDelete?.(p.id); }}>
+                <circle cx={p.mid.x} cy={p.mid.y} r={9} fill="#fff" stroke={theme.accent} strokeWidth={1.5} />
+                <line x1={p.mid.x - 3.5} y1={p.mid.y - 3.5} x2={p.mid.x + 3.5} y2={p.mid.y + 3.5} stroke={theme.accent} strokeWidth={1.6} />
+                <line x1={p.mid.x + 3.5} y1={p.mid.y - 3.5} x2={p.mid.x - 3.5} y2={p.mid.y + 3.5} stroke={theme.accent} strokeWidth={1.6} />
+              </g>
             )}
           </g>
         );
