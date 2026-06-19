@@ -47,3 +47,15 @@ a {
     color-scheme: dark;
   }
 }
+
+[contenteditable] {
+  outline: none;
+  cursor: text;
+  border-radius: 3px;
+}
+[contenteditable]:hover {
+  box-shadow: 0 0 0 1px rgba(120, 120, 120, 0.35);
+}
+[contenteditable]:focus {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
