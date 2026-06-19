@@ -12,8 +12,10 @@ import AiPrompt from "./AiPrompt";
 import Ico from "./Ico";
 import s from "./shell.module.css";
 
-type Sel = { kind: "node" | "edge"; id: string } | null;
-type Clip = { kind: "node"; node: Node } | { kind: "edge"; edge: Edge } | null;
+// Every selectable thing on the diagram shares one shape: a kind + an id. Captions
+// use their section index as the id (selection is reset on any structural change).
+type Sel = { kind: "node" | "edge" | "caption"; id: string } | null;
+type Clip = { kind: "node"; node: Node } | { kind: "edge"; edge: Edge } | { kind: "caption"; text: string } | null;
 
 // Locate a node by id anywhere in the sections (top-level or inside a columns branch).
 function findNode(b: Board, id: string): Node | null {
@@ -117,6 +119,10 @@ export default function EditorShell() {
   const addNode = () => appendNode({ id: newId(), blocks: [{ type: "titleRow", icon: { name: "square" }, text: "新步骤" }] }, "已添加卡片 ✓");
   const moveCaption = (index: number, dx: number, dy: number) =>
     setBoard((b) => ({ ...b, sections: b.sections.map((sec, i) => (i === index && sec.type === "caption" ? { ...sec, dx, dy } : sec)) }));
+  const deleteCaption = (index: number) => {
+    setBoard((b) => (b.sections[index]?.type === "caption" ? { ...b, sections: b.sections.filter((_, i) => i !== index) } : b));
+    setSelected(null);
+  };
 
   // ---- history ----
   const undo = () => {
@@ -147,11 +153,19 @@ export default function EditorShell() {
     clip.current = c;
     setHasClip(!!c);
   };
+  // Append a caption and select it. Its index (= old length) is its selection id.
+  const appendCaption = (text: string, msg: string) => {
+    const idx = boardsRef.current[modeRef.current].sections.length;
+    setBoard((b) => ({ ...b, sections: [...b.sections, { type: "caption", text }] }));
+    setSelected({ kind: "caption", id: String(idx) });
+    flash(msg);
+  };
   const deleteSel = () => {
     const sel = selRef.current;
     if (!sel) return;
     if (sel.kind === "node") deleteNode(sel.id);
-    else deleteEdge(sel.id);
+    else if (sel.kind === "edge") deleteEdge(sel.id);
+    else deleteCaption(Number(sel.id));
   };
   const copySel = () => {
     const sel = selRef.current;
@@ -159,18 +173,22 @@ export default function EditorShell() {
     const b = boardsRef.current[modeRef.current];
     if (sel.kind === "node") {
       const n = findNode(b, sel.id);
-      if (n) { setClip({ kind: "node", node: structuredClone(n) }); flash("已复制 ✓"); }
-    } else {
+      if (n) setClip({ kind: "node", node: structuredClone(n) });
+    } else if (sel.kind === "edge") {
       const e = b.edges.find((x) => x.id === sel.id);
-      if (e) { setClip({ kind: "edge", edge: structuredClone(e) }); flash("已复制 ✓"); }
+      if (e) setClip({ kind: "edge", edge: structuredClone(e) });
+    } else {
+      const sec = b.sections[Number(sel.id)];
+      if (sec?.type === "caption") setClip({ kind: "caption", text: sec.text });
     }
+    flash("已复制 ✓");
   };
   const pasteClip = () => {
     const c = clip.current;
     if (!c) return;
     if (c.kind === "node") {
       appendNode({ ...structuredClone(c.node), id: newId() }, "已粘贴 ✓");
-    } else {
+    } else if (c.kind === "edge") {
       const b = boardsRef.current[modeRef.current];
       if (findNode(b, c.edge.from) && findNode(b, c.edge.to)) {
         const id = newId();
@@ -178,6 +196,8 @@ export default function EditorShell() {
         setSelected({ kind: "edge", id });
         flash("已粘贴 ✓");
       } else flash("连线的端点已不存在");
+    } else {
+      appendCaption(c.text, "已粘贴 ✓");
     }
   };
   const cutSel = () => {
@@ -191,7 +211,7 @@ export default function EditorShell() {
     if (sel.kind === "node") {
       const n = findNode(b, sel.id);
       if (n) appendNode({ ...structuredClone(n), id: newId() }, "已创建副本 ✓");
-    } else {
+    } else if (sel.kind === "edge") {
       const e = b.edges.find((x) => x.id === sel.id);
       if (e) {
         const id = newId();
@@ -199,6 +219,9 @@ export default function EditorShell() {
         setSelected({ kind: "edge", id });
         flash("已创建副本 ✓");
       }
+    } else {
+      const sec = b.sections[Number(sel.id)];
+      if (sec?.type === "caption") appendCaption(sec.text, "已创建副本 ✓");
     }
   };
 
