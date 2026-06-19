@@ -374,6 +374,12 @@
   body.exporting #edge-layer .edge.selected .edge-head{ fill:#64748b; }
   body.exporting .edge-del{ display:none !important; }
   body.exporting .connect-src{ outline:none !important; }
+  .edge-handle{ fill:#fff; stroke:#2563eb; stroke-width:2; pointer-events:all; cursor:grab; }
+  .edge-handle:hover{ fill:#dbeafe; }
+  body.dragging-edge{ cursor:grabbing; }
+  body.dragging-edge #edge-layer *{ pointer-events:none; }   /* see through to the block under the cursor */
+  .drop-target{ outline:2px dashed #16a34a !important; outline-offset:2px; }
+  body.exporting .edge-handle{ display:none !important; }
 </style>
 </head>
 <body>
@@ -1324,6 +1330,7 @@
   let edges = [];                 // {id, from, to, line:'straight', arrow:'end'}
   let edgeSeq = 0, cidSeq = 0;
   let connectMode = false, connectSrc = null, selectedEdge = null, renderRAF = 0;
+  let dragging = null, dragPreview = null, dropTarget = null;   // endpoint re-anchoring
 
   function boardData(){ return { v:1, html: serializeBoard(), colors: currentColors(), edges: validEdges() }; }
   function validEdges(){ return edges.filter(e => blockById(e.from) && blockById(e.to)); }
@@ -1348,19 +1355,39 @@
     const s = 1/Math.max(Math.abs(dx)/(c.w/2), Math.abs(dy)/(c.h/2));
     return { x:c.x+dx*s, y:c.y+dy*s };
   }
+  // Resolve an edge to its two endpoints. The end being dragged floats to the
+  // cursor (board coords); the others snap to their block border.
+  function edgePoints(e, b){
+    function center(which){
+      if(dragPreview && dragging && dragging.edge===e && dragPreview.which===which)
+        return { x: dragPreview.x - b.left, y: dragPreview.y - b.top, free:true };
+      const el = blockById(which==='from' ? e.from : e.to);
+      return el ? Object.assign(rectIn(el,b), { free:false }) : null;
+    }
+    const cf = center('from'), ct = center('to');
+    if(!cf || !ct) return null;
+    return {
+      p1: cf.free ? { x:cf.x, y:cf.y } : borderPt(cf, ct.x, ct.y),
+      p2: ct.free ? { x:ct.x, y:ct.y } : borderPt(ct, cf.x, cf.y)
+    };
+  }
+  function handle(g, p, end){
+    const c=document.createElementNS(svgns,'circle'); c.setAttribute('class','edge-handle'); c.setAttribute('data-end',end);
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r',6);
+    g.appendChild(c);
+  }
   function renderEdges(){
     const svg = ensureEdgeLayer();
     svg.setAttribute('width', boardEl.scrollWidth); svg.setAttribute('height', boardEl.scrollHeight);
     while(svg.firstChild) svg.removeChild(svg.firstChild);
     const b = boardEl.getBoundingClientRect();
     edges.forEach(e => {
-      const A=blockById(e.from), B=blockById(e.to); if(!A||!B) return;   // dangling (block gone) -> skip
-      const ca=rectIn(A,b), cb=rectIn(B,b);
-      const p1=borderPt(ca,cb.x,cb.y), p2=borderPt(cb,ca.x,ca.y);
+      const pts = edgePoints(e, b); if(!pts) return;   // dangling (block gone) -> skip
       const g=document.createElementNS(svgns,'g'); g.setAttribute('class','edge'+(e===selectedEdge?' selected':'')); g.dataset.eid=e.id;
-      const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d','M'+p1.x+' '+p1.y+' L'+p2.x+' '+p2.y);
+      const path=document.createElementNS(svgns,'path'); path.setAttribute('class','edge-path'); path.setAttribute('d','M'+pts.p1.x+' '+pts.p1.y+' L'+pts.p2.x+' '+pts.p2.y);
       g.appendChild(path);
-      drawHead(g, p1, p2, e.arrow);
+      drawHead(g, pts.p1, pts.p2, e.arrow);
+      if(e===selectedEdge){ handle(g, pts.p1, 'from'); handle(g, pts.p2, 'to'); }
       svg.appendChild(g);
     });
   }
@@ -1419,7 +1446,7 @@
   });
   document.addEventListener('mousedown', e => {
     if(connectMode) return;
-    if(e.target.closest && (e.target.closest('.edge-path') || e.target.closest('#edge-del'))) return;
+    if(e.target.closest && (e.target.closest('.edge-path, .edge-handle') || e.target.closest('#edge-del'))) return;
     deselectEdge();
   });
   const edgeDelBtn = document.getElementById('edge-del');
@@ -1433,6 +1460,39 @@
   });
   window.addEventListener('resize', scheduleRender);
   document.addEventListener('scroll', scheduleRender, true);
+
+  // Drag an endpoint handle onto another block to re-point that end (block-to-block,
+  // so dropping off any block reverts).
+  function setDrop(block){
+    if(dropTarget===block) return;
+    if(dropTarget) dropTarget.classList.remove('drop-target');
+    dropTarget = block || null;
+    if(dropTarget) dropTarget.classList.add('drop-target');
+  }
+  boardEl.addEventListener('mousedown', e => {
+    const h = e.target.closest && e.target.closest('.edge-handle');
+    if(!h || !selectedEdge) return;
+    e.preventDefault(); e.stopPropagation();
+    dragging = { edge: selectedEdge, end: h.dataset.end };
+    document.body.classList.add('dragging-edge');
+  });
+  document.addEventListener('mousemove', e => {
+    if(!dragging) return;
+    dragPreview = { which: dragging.end, x: e.clientX, y: e.clientY };
+    const otherId = dragging.end==='from' ? dragging.edge.to : dragging.edge.from;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    let block = under && under.closest ? under.closest(CONNECT_SELECTOR) : null;
+    if(block && block.dataset.cid === otherId) block = null;   // can't connect a block to itself
+    setDrop(block);
+    scheduleRender();
+  });
+  document.addEventListener('mouseup', () => {
+    if(!dragging) return;
+    const { edge, end } = dragging, target = dropTarget;
+    dragging = null; dragPreview = null; document.body.classList.remove('dragging-edge'); setDrop(null);
+    if(target){ const tid = blockId(target); if(end==='from') edge.from = tid; else edge.to = tid; scheduleSave(); }
+    renderEdges(); positionEdgeDel();
+  });
 
   // Boot: a shared hash wins over localStorage; otherwise restore saved work.
   // Connect autosave only after wiring so setup itself doesn't count as an edit.
