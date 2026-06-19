@@ -19,6 +19,7 @@ export default function BoardView({
   onSelectEdge,
   onDeleteEdge,
   onUpdateEdge,
+  onDeleteNode,
 }: {
   board: Board;
   onEdit?: (p: Path, v: string) => void;
@@ -29,6 +30,7 @@ export default function BoardView({
   onSelectEdge?: (id: string | null) => void;
   onDeleteEdge?: (id: string) => void;
   onUpdateEdge?: (id: string, patch: Partial<Edge>) => void;
+  onDeleteNode?: (id: string) => void;
 }) {
   const { theme } = board;
   const flow = board.mode === "flow";
@@ -90,7 +92,7 @@ export default function BoardView({
                   </div>
                 )}
                 {col.nodes.map((n, nIdx) => (
-                  <NodeView key={n.id} node={n} theme={theme} path={[...cp, "nodes", nIdx]} onEdit={onEdit} />
+                  <NodeView key={n.id} node={n} theme={theme} path={[...cp, "nodes", nIdx]} onEdit={onEdit} onDelete={onDeleteNode} />
                 ))}
               </div>
             );
@@ -98,7 +100,7 @@ export default function BoardView({
         </div>
       );
     }
-    if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} />;
+    if (sec.type === "node") return <NodeView key={i} node={sec.node} theme={theme} path={["sections", i, "node"]} onEdit={onEdit} onDelete={onDeleteNode} />;
     return (
       <div key={i} className={s.caption}>
         {E(sec.text, "sections", i, "text")}

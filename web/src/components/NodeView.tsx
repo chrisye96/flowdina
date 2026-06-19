@@ -15,7 +15,32 @@ const ACCENT: Record<string, string> = {
   "state-green": s.cardStateGreen,
 };
 
-export default function NodeView({ node, theme, path, onEdit }: { node: Node; theme: Theme; path: Path; onEdit?: (p: Path, v: string) => void }) {
+export default function NodeView({
+  node,
+  theme,
+  path,
+  onEdit,
+  onDelete,
+}: {
+  node: Node;
+  theme: Theme;
+  path: Path;
+  onEdit?: (p: Path, v: string) => void;
+  onDelete?: (id: string) => void;
+}) {
+  const delBtn = onDelete && (
+    <button
+      className={s.nodeDel}
+      title="删除卡片"
+      onClick={(ev) => {
+        ev.stopPropagation();
+        onDelete(node.id);
+      }}
+    >
+      ×
+    </button>
+  );
+
   if (node.variant === "pill") {
     const ti = node.blocks.findIndex((b) => b.type === "titleRow");
     const title = ti >= 0 ? node.blocks[ti] : undefined;
@@ -23,6 +48,7 @@ export default function NodeView({ node, theme, path, onEdit }: { node: Node; th
     const icon = title?.type === "titleRow" ? title.icon : undefined;
     return (
       <div data-node-id={node.id} className={s.pill} style={{ background: tokenColor(node.pillColor ?? "blue", theme) }}>
+        {delBtn}
         {icon && <Ico name={icon.name} size={18} />}
         <span>{onEdit && ti >= 0 ? <Editable value={text} onChange={(v) => onEdit([...path, "blocks", ti, "text"], v)} /> : text}</span>
       </div>
@@ -31,6 +57,7 @@ export default function NodeView({ node, theme, path, onEdit }: { node: Node; th
 
   return (
     <div data-node-id={node.id} className={`${s.card} ${node.accent ? ACCENT[node.accent] ?? "" : ""}`}>
+      {delBtn}
       {node.tag && <span className={s.tag}>{onEdit ? <Editable value={node.tag} onChange={(v) => onEdit([...path, "tag"], v)} /> : node.tag}</span>}
       {node.header && (
         <div className={s.cardHeader} style={{ background: tokenColor(node.header.color, theme) }}>
