@@ -23,25 +23,23 @@ export default function BlockView({ block, theme, path, onEdit, onSet }: Props) 
   const E = (text: string, ...keys: (string | number)[]): ReactNode =>
     onEdit ? <Editable value={text} onChange={(v) => onEdit([...path, ...keys], v)} /> : <>{text}</>;
 
-  // clickable icon (change / remove) when editing, else a static icon
-  const I = (icon: Icon | undefined, key: string, size?: number): ReactNode => {
-    if (!icon) return null;
-    return onSet ? (
-      <EditableIcon name={icon.name} size={size} onChange={(n) => onSet([...path, key], n ? { name: n } : undefined)} />
-    ) : (
-      <Ico name={icon.name} size={size} />
-    );
+  // Editing: a clickable icon (change/remove) or, when empty, a "+" ghost to add one.
+  // canAdd=false keeps a secondary slot (e.g. a button's trailing icon) from showing a ghost.
+  const I = (icon: Icon | undefined, key: string, size?: number, canAdd = true): ReactNode => {
+    if (!onSet) return icon ? <Ico name={icon.name} size={size} /> : null;
+    if (!icon && !canAdd) return null;
+    return <EditableIcon name={icon?.name} size={size} onChange={(n) => onSet([...path, key], n ? { name: n } : undefined)} />;
   };
 
   switch (block.type) {
     case "titleRow":
       return (
         <div className={s.titleRow}>
-          {block.icon && (
-            <div className={s.icon} style={{ background: tokenColor(block.iconBg ?? "blue", theme) }}>
-              {I(block.icon, "icon")}
-            </div>
-          )}
+          {block.icon ? (
+            <div className={s.icon} style={{ background: tokenColor(block.iconBg ?? "blue", theme) }}>{I(block.icon, "icon")}</div>
+          ) : onSet ? (
+            <EditableIcon size={16} onChange={(n) => onSet([...path, "icon"], n ? { name: n } : undefined)} />
+          ) : null}
           <div className={s.cardTitle}>{E(block.text, "text")}</div>
         </div>
       );
@@ -82,7 +80,7 @@ export default function BlockView({ block, theme, path, onEdit, onSet }: Props) 
         <div className={`${s.btn} ${cls} ${block.trailingIcon ? s.btnSpace : ""}`}>
           {I(block.icon, "icon", 14)}
           <span>{E(block.text, "text")}</span>
-          {I(block.trailingIcon, "trailingIcon", 16)}
+          {I(block.trailingIcon, "trailingIcon", 16, false)}
         </div>
       );
     }

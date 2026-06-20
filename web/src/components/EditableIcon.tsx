@@ -13,14 +13,15 @@ const COMMON = [
   "file-check", "credit-card", "map-pin", "rocket", "trending-up", "play",
 ];
 
-// Click an existing icon to change it (pick another) or remove it.
+// Click an icon to change/remove it; or, when the slot is empty (no name), a faint
+// "+" ghost lets you add one.
 export default function EditableIcon({
   name,
   size,
   color,
   onChange,
 }: {
-  name: string;
+  name?: string;
   size?: number;
   color?: string;
   onChange: (name: string | undefined) => void;
@@ -58,8 +59,8 @@ export default function EditableIcon({
   };
 
   return (
-    <span ref={ref} className={s.trigger} onClick={toggle} title="点击更换或删除图标" data-icon-pop>
-      <Ico name={name} size={size} color={color} />
+    <span ref={ref} className={name ? s.trigger : s.add} onClick={toggle} title={name ? "点击更换或删除图标" : "点击添加图标"} data-icon-pop>
+      {name ? <Ico name={name} size={size} color={color} /> : <Ico name="plus" size={size ?? 14} />}
       {open &&
         pos &&
         createPortal(
@@ -81,17 +82,19 @@ export default function EditableIcon({
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              className={s.remove}
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(undefined);
-                setOpen(false);
-              }}
-            >
-              删除图标
-            </button>
+            {name && (
+              <button
+                type="button"
+                className={s.remove}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange(undefined);
+                  setOpen(false);
+                }}
+              >
+                删除图标
+              </button>
+            )}
           </div>,
           document.body,
         )}

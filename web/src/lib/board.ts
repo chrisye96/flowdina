@@ -50,6 +50,9 @@ export type Node = {
   header?: { text: string; color: ColorToken };
   pillColor?: ColorToken;
   tag?: string;
+  // Manual size override (drag a corner handle). Height is a floor; content can grow past it.
+  width?: number;
+  minHeight?: number;
   blocks: Block[];
 };
 
