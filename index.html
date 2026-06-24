@@ -365,6 +365,11 @@
   .fb-strong{font-weight:700;}
   .fb-list{margin:6px 0 0; padding-left:18px;}
   .fb-list li{margin:4px 0;}
+  /* bullet indentation levels (Tab / Shift+Tab on a list item) */
+  .fb-list li[data-indent="1"]{margin-left:22px; list-style-type:circle;}
+  .fb-list li[data-indent="2"]{margin-left:44px; list-style-type:square;}
+  .fb-list li[data-indent="3"]{margin-left:66px; list-style-type:circle;}
+  .fb-list li[data-indent="4"]{margin-left:88px; list-style-type:square;}
   .fb-sub{background:#f9fafb; border:1px solid #eef0f3; border-radius:8px; padding:8px 10px; margin-top:8px;}
   .fb-sub .fb-row{margin-bottom:3px;}
   .fb-muted{color:#9ca3af;}
@@ -1957,6 +1962,21 @@
       if(selected.type==='edge') removeEdge(selected.ref);
       else if(selected.type==='block'){ removeBlock(selected.ref,'已删除组块'); selectEl(null); recordHistory(); }
     }
+  });
+
+  // ---- bullet indentation: Tab / Shift+Tab on the list item you're editing ---
+  // Each <li class="ce"> is its own contenteditable, so Tab won't naturally
+  // indent; we adjust a data-indent level (0..4) instead. Works in any view.
+  document.addEventListener('keydown', e=>{
+    if(e.key !== 'Tab') return;
+    const ae = document.activeElement;
+    const li = ae && ae.closest && ae.closest('li.ce, li[contenteditable="true"]');
+    if(!li) return;                                        // not editing a bullet -> normal Tab
+    e.preventDefault();
+    let lvl = parseInt(li.dataset.indent || '0', 10) + (e.shiftKey ? -1 : 1);
+    lvl = Math.max(0, Math.min(4, lvl));
+    if(lvl) li.dataset.indent = lvl; else delete li.dataset.indent;
+    if(li.closest('#flow-blocks')) scheduleFlowSave(); else scheduleSave();
   });
 
   // ---- serialization / autosave / restore -----------------------------------
