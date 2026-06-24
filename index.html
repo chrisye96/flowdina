@@ -323,26 +323,170 @@
   .reset-btn:hover{background:#f9fafb;}
   .scrim{position:fixed; inset:0; background:rgba(0,0,0,.18); z-index:55; display:none;}
   .scrim.open{display:block;}
+
+  /* ===================== FLOWCHART VIEW ===================== */
+  [hidden]{display:none !important;}
+
+  /* view toggle (segmented control in the toolbar) */
+  .seg{display:inline-flex; border:1px solid #d1d5db; border-radius:9px; overflow:hidden;}
+  .seg button{border:none; background:#fff; color:#374151; font-size:13.5px; font-weight:600; padding:9px 13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;}
+  .seg button.active{background:#111827; color:#fff;}
+  .seg button svg{width:15px; height:15px;}
+  .tb-group{display:inline-flex; gap:10px; align-items:center;}
+  .tb-sep{width:1px; height:24px; background:#e5e7eb;}
+
+  /* flow layout: pan/zoom canvas + docked property sidebar */
+  #flow-view{position:relative;}
+  .flow-stage{display:flex; height:calc(100vh - 59px);}
+  .flow-canvas{
+    position:relative; flex:1 1 auto; overflow:hidden; background:#f8fafc;
+    background-image:radial-gradient(circle, #d4dae3 1px, transparent 1.4px);
+    background-size:24px 24px; cursor:grab; touch-action:none;
+  }
+  .flow-canvas.panning{cursor:grabbing;}
+  body.exporting .flow-canvas{background-image:none;}
+  .flow-world{position:absolute; top:0; left:0; width:4200px; height:3200px; transform-origin:0 0;}
+  .flow-edges{position:absolute; top:0; left:0; width:4200px; height:3200px; overflow:visible; pointer-events:none;}
+  .flow-edges path.edge{pointer-events:stroke; cursor:pointer;}
+  .flow-blocks{position:absolute; top:0; left:0;}
+  .flow-labels{position:absolute; top:0; left:0; pointer-events:none;}
+
+  /* blocks */
+  .fb{
+    position:absolute; box-sizing:border-box; background:#fff; border:1px solid #e5e7eb;
+    border-radius:12px; box-shadow:0 1px 3px rgba(16,24,40,.08);
+    font-size:11.5px; color:#374151; line-height:1.45;
+  }
+  .fb .fb-head{padding:9px 12px; font-weight:800; font-size:12.5px; color:#fff; text-align:center; letter-spacing:.02em; border-radius:11px 11px 0 0;}
+  .fb .fb-body{padding:11px 12px;}
+  .fb.selected{outline:2px solid #3b82f6; outline-offset:2px;}
+  .fb-row{display:flex; gap:6px; align-items:center;}
+  .fb-row svg, .fb-sub svg{width:14px; height:14px; flex:none;}
+  .fb-strong{font-weight:700;}
+  .fb-list{margin:6px 0 0; padding-left:18px;}
+  .fb-list li{margin:4px 0;}
+  .fb-sub{background:#f9fafb; border:1px solid #eef0f3; border-radius:8px; padding:8px 10px; margin-top:8px;}
+  .fb-sub .fb-row{margin-bottom:3px;}
+  .fb-muted{color:#9ca3af;}
+  .fb-resize{position:absolute; right:0; bottom:0; width:16px; height:16px; cursor:nwse-resize; display:none;}
+  .fb-resize::after{content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid #94a3b8; border-bottom:2px solid #94a3b8; border-radius:0 0 2px 0;}
+  .fb.selected .fb-resize{display:block;}
+  body.exporting .fb-resize{display:none !important;}
+
+  /* connect anchors on blocks */
+  .fb-anchor{position:absolute; width:11px; height:11px; border-radius:50%; background:#3b82f6; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.3); cursor:crosshair; display:none; z-index:5;}
+  .fb:hover .fb-anchor, .fb.selected .fb-anchor{display:block;}
+  .fb-anchor.a-top{top:-6px; left:50%; margin-left:-6px;}
+  .fb-anchor.a-bottom{bottom:-6px; left:50%; margin-left:-6px;}
+  .fb-anchor.a-left{left:-6px; top:50%; margin-top:-6px;}
+  .fb-anchor.a-right{right:-6px; top:50%; margin-top:-6px;}
+  body.exporting .fb-anchor{display:none !important;}
+
+  /* edge endpoint handles + labels (live in the world-space labels layer) */
+  .edge-handle{position:absolute; width:13px; height:13px; border-radius:50%; background:#fff; border:2px solid #3b82f6; margin:-7px 0 0 -7px; cursor:move; pointer-events:auto; z-index:6;}
+  body.exporting .edge-handle, body.exporting .flow-tmp{display:none !important;}
+  .edge-label{position:absolute; transform:translate(-50%,-50%); background:#fff; padding:1px 6px; border-radius:6px; font-size:11px; color:#374151; border:1px solid #e5e7eb; pointer-events:auto; white-space:nowrap;}
+  .edge-label:focus{outline:2px solid #3b82f6;}
+  body.exporting .edge-label{border-color:transparent; background:transparent;}
+
+  /* block variants (style only) */
+  .fb-terminal{border:none; border-radius:999px; background:#2563eb; color:#fff; box-shadow:0 2px 6px rgba(37,99,235,.3);}
+  .fb-terminal .fb-body{padding:12px 22px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700; color:inherit; text-align:center;}
+  .fb-terminal .fb-body svg{width:16px; height:16px;}
+  .fb-decision{border:2px solid #7c3aed; background:#faf5ff;}
+  .fb-note{border:none; background:transparent; box-shadow:none; text-align:center; font-weight:600; color:#6b7280;}
+
+  /* contextual property sidebar */
+  .flow-sidebar{width:290px; flex:none; background:#fff; border-left:1px solid #e5e7eb; padding:16px; overflow-y:auto;}
+  body.exporting .flow-sidebar{display:none;}
+  .fs-empty{color:#9ca3af; font-size:12.5px; line-height:1.7;}
+  .fs-h{font-size:13.5px; font-weight:700; margin:0 0 6px; display:flex; align-items:center; gap:7px;}
+  .fs-h svg{width:16px; height:16px;}
+  .fs-grp{font-size:10.5px; font-weight:700; letter-spacing:.05em; color:#9ca3af; text-transform:uppercase; margin:15px 0 5px;}
+  .fs-row{display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12.5px; padding:5px 0;}
+  .fs-row label{color:#374151;}
+  .fs-row input[type=color]{width:40px; height:26px; border:1px solid #d1d5db; border-radius:6px; padding:0; cursor:pointer; background:#fff;}
+  .fs-row input[type=range]{width:130px;}
+  .fs-row select, .fs-row input[type=text]{font-size:12px; padding:5px 7px; border:1px solid #d1d5db; border-radius:7px; background:#fff;}
+  .fs-seg{display:inline-flex; border:1px solid #d1d5db; border-radius:7px; overflow:hidden;}
+  .fs-seg button{border:none; background:#fff; padding:5px 11px; font-size:11.5px; cursor:pointer; color:#374151;}
+  .fs-seg button.on{background:#2563eb; color:#fff;}
+  .fs-btn{width:100%; margin-top:8px; padding:8px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:12.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;}
+  .fs-btn:hover{background:#f9fafb;}
+  .fs-btn.danger{border-color:#fecaca; color:#dc2626;}
+  .fs-btn.danger:hover{background:#fef2f2;}
+  .fs-btn svg{width:14px; height:14px;}
+  .fs-addgrid{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;}
+  .fs-addgrid button{padding:7px; border:1px solid #d1d5db; border-radius:8px; background:#fff; font-size:11.5px; cursor:pointer; display:flex; align-items:center; gap:6px; justify-content:center; color:#374151;}
+  .fs-addgrid button:hover{background:#f9fafb;}
+  .fs-addgrid button svg{width:14px; height:14px;}
 </style>
 </head>
 <body>
 
   <!-- ================= TOOLBAR (excluded from export) ================= -->
   <div class="toolbar">
-    <button class="tbtn primary" onclick="exportImage('png')"><i data-lucide="image"></i>导出 PNG</button>
-    <button class="tbtn primary" onclick="exportImage('pdf')"><i data-lucide="file-down"></i>导出 PDF</button>
-    <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>颜色设置</button>
-    <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>新增阶段</button>
-    <button class="tbtn" onclick="resetTemplate()" title="清除所有改动，恢复到初始模板"><i data-lucide="rotate-ccw"></i>重置模板</button>
-    <button class="tbtn" onclick="exportJSON()" title="把当前图表保存为 JSON 文件"><i data-lucide="braces"></i>导出 JSON</button>
-    <button class="tbtn" onclick="document.getElementById('import-json').click()" title="从 JSON 文件载入图表"><i data-lucide="upload"></i>导入 JSON</button>
+    <!-- view switch -->
+    <div class="seg" id="view-seg">
+      <button id="seg-flow" class="active" onclick="setView('flow')"><i data-lucide="git-fork"></i>流程图</button>
+      <button id="seg-step" onclick="setView('step')"><i data-lucide="columns-3"></i>步骤图</button>
+    </div>
+    <span class="tb-sep"></span>
+
+    <!-- flow-only controls -->
+    <div class="tb-group tb-flow">
+      <button class="tbtn" onclick="openFbAddMenu(event)" title="新增组块"><i data-lucide="plus-square"></i>组块</button>
+      <button class="tbtn" onclick="addFreeSegment()" title="新增自由线段"><i data-lucide="move-up-right"></i>线段</button>
+      <button class="tbtn" onclick="flowZoom(-1)" title="缩小"><i data-lucide="zoom-out"></i></button>
+      <button class="tbtn" onclick="flowFit()" title="适应窗口"><i data-lucide="maximize"></i></button>
+      <button class="tbtn" onclick="flowZoom(1)" title="放大"><i data-lucide="zoom-in"></i></button>
+    </div>
+
+    <!-- step-only controls -->
+    <div class="tb-group tb-step" hidden>
+      <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>新增阶段</button>
+      <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>颜色设置</button>
+    </div>
+    <span class="tb-sep"></span>
+
+    <!-- common -->
+    <button class="tbtn primary" onclick="exportImage('png')"><i data-lucide="image"></i>PNG</button>
+    <button class="tbtn primary" onclick="exportImage('pdf')"><i data-lucide="file-down"></i>PDF</button>
+    <button class="tbtn" onclick="resetTemplate()" title="恢复当前视图到初始模板"><i data-lucide="rotate-ccw"></i>重置</button>
+    <button class="tbtn" onclick="exportJSON()" title="把当前视图保存为 JSON 文件"><i data-lucide="braces"></i>导出 JSON</button>
+    <button class="tbtn" onclick="document.getElementById('import-json').click()" title="从 JSON 文件载入"><i data-lucide="upload"></i>导入 JSON</button>
     <input type="file" id="import-json" accept="application/json,.json" style="display:none">
-    <button class="tbtn" onclick="copyShareLink()" title="复制包含当前图表的分享链接"><i data-lucide="link"></i>分享链接</button>
+    <button class="tbtn" onclick="copyShareLink()" title="复制包含当前视图的分享链接"><i data-lucide="link"></i>分享</button>
     <span id="status"></span>
     <span id="saved" class="saved-ind"><i data-lucide="check"></i>已自动保存</span>
-    <span class="hint">改动会自动保存到本机浏览器 · 点击文字直接编辑 · 选中文字可加粗 / 改色 · 悬停出现 ＋（加内容）和 ×（删除）· 导出仅含图表</span>
+    <span class="hint" id="hint"></span>
   </div>
 
+  <!-- flow block-type menu (reuses .add-menu styling) -->
+  <div class="add-menu" id="fb-add-menu">
+    <button data-fb="step"><i data-lucide="square"></i>步骤块</button>
+    <button data-fb="decision"><i data-lucide="diamond"></i>决策块</button>
+    <button data-fb="status"><i data-lucide="info"></i>状态框</button>
+    <button data-fb="terminal"><i data-lucide="circle"></i>起止节点</button>
+    <button data-fb="note"><i data-lucide="type"></i>文字标注</button>
+  </div>
+
+  <!-- ================= FLOWCHART VIEW (default) ================= -->
+  <div id="flow-view">
+    <div class="flow-stage">
+      <div class="flow-canvas" id="flow-canvas">
+        <div class="flow-world" id="flow-world">
+          <svg class="flow-edges" id="flow-edges" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="flow-blocks" id="flow-blocks"></div>
+          <div class="flow-labels" id="flow-labels"></div>
+        </div>
+      </div>
+      <aside class="flow-sidebar" id="flow-sidebar"></aside>
+    </div>
+  </div><!-- /#flow-view -->
+
+  <!-- ================= STEP DIAGRAM VIEW ================= -->
+  <div id="step-view" hidden>
   <!-- ================= PAGE ================= -->
   <div class="page">
     <div class="board-wrap">
@@ -530,6 +674,7 @@
 
     </div><!-- /board-wrap -->
   </div><!-- /page -->
+  </div><!-- /#step-view -->
 
   <!-- ================= INLINE FORMAT TOOLBAR (appears on text selection; excluded from export) ================= -->
   <div class="seltool" id="seltool">
@@ -771,7 +916,11 @@
     '.note-head', '.note-label', '.note-body', '.notif-title',
     '.verify-title', '.verify-row', '.warn-title', '.warn-text', '.banner-title'
   ];
-  const RM_SELECTOR = RM_LIST.map(s => '#board ' + s).join(', ');
+  // Flow blocks reuse the same hover-to-delete machinery (whole block + inner items).
+  const FLOW_RM = ['.fb', '.fb-head', '.fb-row', '.fb-list', '.fb-list li', '.fb-sub',
+                   '.card-body', '.field', '.btn', '.note', '.label-only', '.card-icon'];
+  const RM_SELECTOR = RM_LIST.map(s => '#board ' + s).join(', ')
+                    + ', ' + FLOW_RM.map(s => '#flow-blocks ' + s).join(', ');
   const undoStack = [];
   let activeRemovable = null;
   let toastTimer = null;
@@ -781,6 +930,11 @@
 
   // Human-readable label so the tooltip + red outline make the delete scope obvious.
   function rmLabel(el){
+    if(el.matches('.fb')) return '删除整个组块';
+    if(el.matches('.fb-head')) return '删除标题栏';
+    if(el.matches('.fb-list li')) return '删除这一条';
+    if(el.matches('.fb-list')) return '删除整个列表';
+    if(el.matches('.fb-sub')) return '删除这个小框';
     if(el.matches('.col')) return '删除整个阶段';
     if(el.matches('.card')) return '删除整张卡片';
     if(el.matches('.note, .notif-head, .note-head')) return '删除通知框';
@@ -849,13 +1003,19 @@
     undoStack.push({ el, parent: el.parentNode, next: el.nextSibling });
     el.remove();
     setActiveRemovable(null);
+    if(typeof renderEdges === 'function') renderEdges();   // a removed flow block drops its edges
     showToast(msg || '已删除 1 项');
   }
   function undoRemove(){
     const last = undoStack.pop();
     if(!last) return;
+    if(last.edge){                                          // a deleted flow connector
+      connectors.splice(Math.min(last.index, connectors.length), 0, last.edge);
+      renderEdges(); hideToast(); return;
+    }
     if(last.next && last.next.parentNode === last.parent) last.parent.insertBefore(last.el, last.next);
     else last.parent.appendChild(last.el);
+    if(typeof renderEdges === 'function') renderEdges();
     hideToast();
   }
   function showToast(msg){
@@ -917,10 +1077,12 @@
     addCard(col);
   }
   function addInto(card, type){
-    if(type === 'icon'){ openIconPickerForCard(card); return; }
+    // Flow blocks (.fb) hold their content in .fb-body; step cards append directly.
+    const host = card.matches('.fb') ? (card.querySelector('.fb-body') || card) : card;
+    if(type === 'icon'){ openIconPickerForCard(host); return; }
     const node = buildPiece(type);
     if(!node) return;
-    card.appendChild(activate(node));
+    host.appendChild(activate(node));
     refreshIcons();
   }
 
@@ -972,9 +1134,10 @@
   // ----- "add into card" floating button + menu -----
   document.addEventListener('pointermove', e => {
     if(addMenu.classList.contains('show')) return;   // freeze target while the menu is open
+    if(typeof flowDragging !== 'undefined' && flowDragging){ addFloat.classList.remove('show'); currentCard = null; return; }
     if(addFloat.contains(e.target) || addMenu.contains(e.target) || iconPicker.contains(e.target)) return;
     if(e.target.closest && e.target.closest('.add-ui')) { addFloat.classList.remove('show'); currentCard = null; return; }
-    const card = e.target.closest && e.target.closest('#board .card');
+    const card = e.target.closest && e.target.closest('#board .card, #flow-blocks .fb');
     setCurrentCard(card || null);
   });
   function setCurrentCard(card){
@@ -1069,7 +1232,20 @@
     return true;
   }
   function resetTemplate(){
-    if(!confirm('确定要清除所有改动，恢复到初始模板吗？此操作不可撤销。')) return;
+    if(currentView() === 'flow'){
+      if(!confirm('确定要清除流程图的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
+      try{ localStorage.removeItem(FLOW_LS_KEY); }catch(e){}
+      flowReady = false;
+      connectors = [];
+      flowBlocks.innerHTML = '';
+      buildFlowTemplate();
+      initFlow();
+      flowFit();
+      flowReady = true;
+      flowSaveState();
+      return;
+    }
+    if(!confirm('确定要清除步骤图的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
     try{ localStorage.removeItem(LS_KEY); }catch(e){}
     autosaveReady = false;
     boardEl.innerHTML = TEMPLATE_HTML;
@@ -1100,52 +1276,94 @@
     return tpl.innerHTML;
   }
 
+  // Both views share the {view, payload} wrapper below so a link carries whichever
+  // diagram is on screen. Legacy links (no `view`, top-level `html`) load as step.
+  function shareDoc(){
+    return currentView() === 'flow'
+      ? { v:1, ...serializeFlow() }                                  // {view:'flow', blocksHtml, connectors, colors}
+      : { v:1, view:'step', html: serializeBoard(), colors: currentColors() };
+  }
   async function copyShareLink(){
     const status=document.getElementById('status'); status.textContent='生成链接…';
     try{
-      const enc=await gzip(JSON.stringify({ v:1, html: serializeBoard(), colors: currentColors() }));
-      // ponytail: full state in the hash, ceiling ~tens of KB. Huge boards make
-      // long links — use "导出 JSON" instead then.
+      const enc=await gzip(JSON.stringify(shareDoc()));
       const url=location.origin+location.pathname+'#s='+enc;
       await navigator.clipboard.writeText(url);   // clipboard only; keep the working URL clean
       status.textContent = enc.length>30000 ? '链接已复制（较长，建议改用 JSON 文件）' : '分享链接已复制 ✓';
     }catch(e){ console.error(e); status.textContent='生成链接失败'; }
     setTimeout(()=>status.textContent='',3000);
   }
+  // Returns the view a loaded doc targets, after applying it. null = nothing loaded.
+  function applyDoc(data){
+    if(!data) return null;
+    if(data.view === 'flow' && typeof data.blocksHtml === 'string'){
+      flowBlocks.innerHTML = safeBoardHtml(data.blocksHtml);
+      connectors = Array.isArray(data.connectors) ? data.connectors : [];
+      applyColors(data.colors); initFlow();
+      return 'flow';
+    }
+    if(typeof data.html === 'string'){                                // step (incl. legacy)
+      boardEl.innerHTML = safeBoardHtml(data.html); applyColors(data.colors);
+      return 'step';
+    }
+    return null;
+  }
   async function loadFromHash(){
-    const m=location.hash.match(/^#s=(.+)$/); if(!m) return false;
-    try{
-      const data=JSON.parse(await gunzip(m[1]));
-      if(!data || typeof data.html!=='string') return false;
-      boardEl.innerHTML=safeBoardHtml(data.html); applyColors(data.colors); return true;
-    }catch(e){ console.error(e); return false; }
+    const m=location.hash.match(/^#s=(.+)$/); if(!m) return null;
+    try{ return applyDoc(JSON.parse(await gunzip(m[1]))); }
+    catch(e){ console.error(e); return null; }
   }
 
   // Boot: a shared hash wins over localStorage; otherwise restore saved work.
   // Connect autosave only after wiring so setup itself doesn't count as an edit.
-  (async function boot(){
-    const fromHash = await loadFromHash();
-    if(!fromHash) restoreState();
+  // NOTE: invoked at the very end of this <script>, once the flow module's
+  // declarations have run (boot touches flow bindings).
+  async function boot(){
+    const hashView = await loadFromHash();          // 'flow' | 'step' | null
+
+    // ----- step view -----
+    if(hashView !== 'step') restoreState();          // a step-hash already filled #board
     initBoard();
     const obs = new MutationObserver(scheduleSave);
     obs.observe(boardEl, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
     boardEl.addEventListener('input', scheduleSave);
-    window.addEventListener('beforeunload', () => { if(autosaveReady){ clearTimeout(saveTimer); saveState(); } });
     autosaveReady = true;
-    // Opened from a shared link: persist it locally and clean the URL so edits
-    // survive a reload like any other board.
-    if(fromHash){ saveState(); history.replaceState(null,'',location.pathname); }
-  })();
+
+    // ----- flow view -----
+    if(hashView !== 'flow'){
+      if(!flowRestore()){ buildFlowTemplate(); initFlow(); }
+    }
+    flowFit();
+    const fobs = new MutationObserver(scheduleFlowSave);
+    fobs.observe(flowBlocks, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
+    flowBlocks.addEventListener('input', scheduleFlowSave);
+    flowReady = true;
+
+    window.addEventListener('beforeunload', () => {
+      if(autosaveReady){ clearTimeout(saveTimer); saveState(); }
+      if(flowReady){ clearTimeout(flowSaveTimer); flowSaveState(); }
+    });
+
+    // Default view: a shared link forces its own view; otherwise last-used, else flow.
+    setView(hashView || localStorage.getItem('active-view') || 'flow');
+
+    // Opened from a shared link: persist locally and clean the URL.
+    if(hashView){
+      if(hashView === 'flow') flowSaveState(); else saveState();
+      history.replaceState(null,'',location.pathname);
+    }
+  }
 
   // ---------------- JSON export / import (Phase 0: portability) ----------------
   // Same {html, colors} shape as the autosave, just to/from a file. Round-trips
   // exactly because it reuses the same serialization.
   function exportJSON(){
-    const data = { v:1, html: serializeBoard(), colors: currentColors() };
+    const flow = currentView() === 'flow';
+    const data = shareDoc();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'franchisee-journey.json';
+    a.download = flow ? 'flowchart.json' : 'franchisee-journey.json';
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1154,11 +1372,11 @@
     reader.onload = () => {
       let data;
       try{ data = JSON.parse(reader.result); }catch(e){ alert('文件不是有效的 JSON'); return; }
-      if(!data || typeof data.html !== 'string'){ alert('JSON 缺少 board 内容'); return; }
-      boardEl.innerHTML = safeBoardHtml(data.html);   // imported files are untrusted too
-      applyColors(data.colors);
-      initBoard();
-      scheduleSave();
+      const view = applyDoc(data);                     // imported files are untrusted too
+      if(!view){ alert('JSON 缺少图表内容'); return; }
+      if(view === 'step'){ initBoard(); scheduleSave(); }
+      else { scheduleFlowSave(); }
+      setView(view);
     };
     reader.readAsText(file);
   }
@@ -1171,15 +1389,20 @@
   function pageBg(){
     return getComputedStyle(root).getPropertyValue('--page-bg').trim() || '#eef1f5';
   }
-  async function snapshot(){
-    const board = document.getElementById('board');
+  function prepExport(){
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     document.body.classList.add('exporting');
     document.getElementById('seltool').style.display='none';
     document.getElementById('add-menu').classList.remove('show');
     document.getElementById('icon-picker').classList.remove('show');
     document.getElementById('add-float').classList.remove('show');
+    document.getElementById('fb-add-menu').classList.remove('show');
     if(typeof setActiveRemovable === 'function') setActiveRemovable(null);
+  }
+  async function snapshot(){
+    if(currentView() === 'flow') return snapshotFlow();
+    const board = document.getElementById('board');
+    prepExport();
     const canvas = await html2canvas(board, {
       scale:2, backgroundColor: pageBg(), useCORS:true, logging:false,
       windowWidth: board.scrollWidth, windowHeight: board.scrollHeight
@@ -1187,14 +1410,36 @@
     document.body.classList.remove('exporting');
     return canvas;
   }
+  // Flow export: drop pan/zoom, crop html2canvas to the content bounding box.
+  async function snapshotFlow(){
+    selectEl(null);
+    prepExport();
+    const bb = contentBBox() || { x:0, y:0, w:800, h:600 };
+    const pad = 48;
+    const prev = flowWorld.style.transform;
+    flowWorld.style.transform = 'none';
+    let canvas;
+    try{
+      canvas = await html2canvas(flowWorld, {
+        scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false,
+        x: bb.x - pad, y: bb.y - pad, width: bb.w + pad*2, height: bb.h + pad*2,
+        windowWidth: flowWorld.offsetWidth, windowHeight: flowWorld.offsetHeight
+      });
+    } finally {
+      flowWorld.style.transform = prev;
+      document.body.classList.remove('exporting');
+    }
+    return canvas;
+  }
   async function exportImage(kind){
     const status = document.getElementById('status');
     status.textContent = '导出中…';
     try{
       const canvas = await snapshot();
+      const base = currentView() === 'flow' ? 'flowchart' : 'franchisee-journey';
       if(kind === 'png'){
         const a = document.createElement('a');
-        a.download = 'franchisee-journey.png';
+        a.download = base + '.png';
         a.href = canvas.toDataURL('image/png');
         a.click();
       } else {
@@ -1202,7 +1447,7 @@
         const w = canvas.width, h = canvas.height;
         const pdf = new jsPDF({ orientation: w >= h ? 'landscape' : 'portrait', unit:'px', format:[w,h] });
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
-        pdf.save('franchisee-journey.pdf');
+        pdf.save(base + '.pdf');
       }
       status.textContent = '已导出 ✓';
     }catch(err){
@@ -1211,6 +1456,518 @@
     }
     setTimeout(()=> status.textContent = '', 2500);
   }
+
+  // ============================================================================
+  //  FLOWCHART VIEW  (free canvas + SVG connectors)
+  // ============================================================================
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const flowCanvas  = document.getElementById('flow-canvas');
+  const flowWorld   = document.getElementById('flow-world');
+  const flowBlocks  = document.getElementById('flow-blocks');
+  const flowEdges   = document.getElementById('flow-edges');
+  const flowLabels  = document.getElementById('flow-labels');
+  const flowSidebar = document.getElementById('flow-sidebar');
+  const FLOW_LS_KEY = 'flowchart-state-v1';
+
+  let connectors  = [];                       // edge records (the source of truth for the SVG layer)
+  let selected    = { type:null, ref:null };  // 'block' (DOM el) | 'edge' (record) | null
+  let flowState   = { scale:1, panX:60, panY:40 };
+  let gridSnap    = true;
+  let flowReady   = false;
+  let flowDragging= false;
+  let flowSaveTimer = null;
+  let fbIdSeq = 1;
+  function nextId(p){ return p + (fbIdSeq++) + '-' + Math.random().toString(36).slice(2,6); }
+  function cssEsc(s){ return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/[^a-zA-Z0-9_-]/g,'\\$&'); }
+
+  // ---- view switching -------------------------------------------------------
+  function currentView(){ return document.getElementById('flow-view').hidden ? 'step' : 'flow'; }
+  function setView(v){
+    document.getElementById('flow-view').hidden = (v !== 'flow');
+    document.getElementById('step-view').hidden = (v !== 'step');
+    document.getElementById('seg-flow').classList.toggle('active', v === 'flow');
+    document.getElementById('seg-step').classList.toggle('active', v === 'step');
+    document.querySelectorAll('.tb-flow').forEach(g => g.hidden = (v !== 'flow'));
+    document.querySelectorAll('.tb-step').forEach(g => g.hidden = (v !== 'step'));
+    document.getElementById('hint').textContent = v === 'flow'
+      ? '拖动组块移动 · 拖组块边缘蓝点拉出连线 · 点击连线/组块在右侧改属性 · 双击连线加文字 · 滚轮缩放 · 拖空白平移'
+      : '点击文字直接编辑 · 选中文字可加粗/改色 · 悬停出现 ＋（加内容）和 ×（删除）· 改动自动保存';
+    try{ localStorage.setItem('active-view', v); }catch(e){}
+    if(v === 'flow'){ applyTransform(); renderEdges(); }
+  }
+
+  // ---- canvas transform / pan / zoom ----------------------------------------
+  function applyTransform(){ flowWorld.style.transform = 'translate('+flowState.panX+'px,'+flowState.panY+'px) scale('+flowState.scale+')'; }
+  function clientToWorld(cx, cy){
+    const r = flowCanvas.getBoundingClientRect();
+    return { x:(cx - r.left - flowState.panX) / flowState.scale, y:(cy - r.top - flowState.panY) / flowState.scale };
+  }
+  function contentBBox(){
+    const els = [...flowBlocks.children];
+    if(!els.length) return null;
+    let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
+    els.forEach(el=>{ const x=el.offsetLeft,y=el.offsetTop,w=el.offsetWidth,h=el.offsetHeight; x1=Math.min(x1,x); y1=Math.min(y1,y); x2=Math.max(x2,x+w); y2=Math.max(y2,y+h); });
+    return { x:x1, y:y1, w:x2-x1, h:y2-y1 };
+  }
+  function zoomAround(mx, my, ns){
+    const old = flowState.scale;
+    ns = Math.min(2, Math.max(0.25, ns));
+    flowState.panX = mx - (mx - flowState.panX) * (ns/old);
+    flowState.panY = my - (my - flowState.panY) * (ns/old);
+    flowState.scale = ns; applyTransform();
+  }
+  function flowZoom(dir){ const r=flowCanvas.getBoundingClientRect(); zoomAround(r.width/2, r.height/2, flowState.scale*(dir>0?1.15:1/1.15)); }
+  function flowFit(){
+    const bb = contentBBox();
+    if(!bb){ flowState={scale:1,panX:60,panY:40}; applyTransform(); return; }
+    const r = flowCanvas.getBoundingClientRect(), pad = 60;
+    const ns = Math.min(1.4, Math.max(0.25, Math.min((r.width-pad*2)/bb.w, (r.height-pad*2)/bb.h)));
+    flowState.scale = ns;
+    flowState.panX = (r.width - bb.w*ns)/2 - bb.x*ns;
+    flowState.panY = pad - bb.y*ns;
+    applyTransform();
+  }
+  flowCanvas.addEventListener('wheel', e=>{ e.preventDefault(); const r=flowCanvas.getBoundingClientRect(); zoomAround(e.clientX-r.left, e.clientY-r.top, flowState.scale*(e.deltaY<0?1.1:1/1.1)); }, {passive:false});
+  // pan when the drag starts on empty canvas (not a block / edge path)
+  flowCanvas.addEventListener('pointerdown', e=>{
+    if(e.target !== flowCanvas && e.target !== flowWorld && e.target !== flowEdges) return;
+    selectEl(null);
+    const start = { x:e.clientX, y:e.clientY, px:flowState.panX, py:flowState.panY };
+    flowCanvas.classList.add('panning');
+    function mv(ev){ flowState.panX = start.px + (ev.clientX-start.x); flowState.panY = start.py + (ev.clientY-start.y); applyTransform(); }
+    function up(){ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); flowCanvas.classList.remove('panning'); }
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  });
+
+  // ---- blocks ---------------------------------------------------------------
+  const FB_DEFAULTS = { step:{w:320}, decision:{w:320}, status:{w:260}, terminal:{w:200}, note:{w:240} };
+  function mkBlock(o){
+    const type = o.type || 'step';
+    const el = document.createElement('div');
+    el.className = 'fb fb-' + type;
+    el.dataset.id = o.id || nextId('b');
+    el.dataset.type = type;
+    el.style.left = (o.x||60) + 'px';
+    el.style.top  = (o.y||60) + 'px';
+    el.style.width = (o.w || (FB_DEFAULTS[type]||{}).w || 260) + 'px';
+    if(o.h) el.style.height = o.h + 'px';
+    if(o.bg) el.style.background = o.bg;
+    if(o.color) el.style.color = o.color;
+    if(o.borderColor) el.style.borderColor = o.borderColor;
+    let html = '';
+    if(o.head !== undefined && type === 'step')
+      html += '<div class="fb-head"' + (o.headBg ? ' style="background:'+o.headBg+'"' : '') + '>' + o.head + '</div>';
+    if(type === 'terminal')
+      html += '<div class="fb-body"><i data-lucide="'+(o.icon||'circle')+'"></i><span class="ce">'+(o.body||'Node')+'</span></div>';
+    else
+      html += '<div class="fb-body">' + (o.body || '<div class="card-body ce">Text</div>') + '</div>';
+    html += '<div class="fb-resize"></div>';
+    ['top','right','bottom','left'].forEach(a => html += '<div class="fb-anchor a-'+a+'" data-anchor="'+a+'"></div>');
+    el.innerHTML = html;
+    flowBlocks.appendChild(el);
+    activate(el);
+    return el;
+  }
+  function ensureBlockChrome(el){
+    if(!el.dataset.id) el.dataset.id = nextId('b');
+    if(!el.querySelector(':scope > .fb-resize')){ const r=document.createElement('div'); r.className='fb-resize'; el.appendChild(r); }
+    if(!el.querySelector(':scope > .fb-anchor')) ['top','right','bottom','left'].forEach(a=>{ const d=document.createElement('div'); d.className='fb-anchor a-'+a; d.dataset.anchor=a; el.appendChild(d); });
+  }
+
+  flowBlocks.addEventListener('pointerdown', e=>{
+    const anchor = e.target.closest('.fb-anchor');
+    if(anchor){ startConnect(anchor, e); return; }
+    const block = e.target.closest('.fb'); if(!block) return;
+    if(e.target.closest('.fb-resize')){ startResize(block, e); return; }
+    if(e.target.closest('[contenteditable="true"]')){ selectEl(block, 'block'); return; }  // editing text
+    startMove(block, e);
+  });
+  function startMove(block, e){
+    selectEl(block, 'block');
+    const sx=e.clientX, sy=e.clientY, ox=parseFloat(block.style.left)||0, oy=parseFloat(block.style.top)||0;
+    let moved=false;
+    function mv(ev){
+      const adx=ev.clientX-sx, ady=ev.clientY-sy;
+      if(!moved && Math.abs(adx)+Math.abs(ady)<4) return;
+      moved=true; flowDragging=true;
+      let nx=ox+adx/flowState.scale, ny=oy+ady/flowState.scale;
+      if(gridSnap){ nx=Math.round(nx/8)*8; ny=Math.round(ny/8)*8; }
+      block.style.left=nx+'px'; block.style.top=ny+'px'; renderEdges();
+    }
+    function up(){ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); flowDragging=false; if(moved) scheduleFlowSave(); }
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }
+  function startResize(block, e){
+    e.preventDefault(); e.stopPropagation();
+    selectEl(block, 'block');
+    const sx=e.clientX, sy=e.clientY, ow=block.offsetWidth, oh=block.offsetHeight;
+    function mv(ev){
+      flowDragging=true;
+      block.style.width = Math.max(120, ow+(ev.clientX-sx)/flowState.scale)+'px';
+      block.style.height= Math.max(48,  oh+(ev.clientY-sy)/flowState.scale)+'px';
+      renderEdges();
+    }
+    function up(){ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); flowDragging=false; scheduleFlowSave(); }
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }
+
+  // ---- selection ------------------------------------------------------------
+  function selectEl(ref, type){
+    flowBlocks.querySelectorAll('.fb.selected').forEach(b=>b.classList.remove('selected'));
+    if(!ref){ selected={type:null,ref:null}; renderEdges(); renderSidebar(); return; }
+    selected = { type, ref };
+    if(type==='block') ref.classList.add('selected');
+    renderEdges(); renderSidebar();
+  }
+
+  // ---- connector creation + endpoint editing --------------------------------
+  function mkEdge(o){ return Object.assign({ id:nextId('e'), arrowStart:false, arrowEnd:true, arrowType:'solid', lineStyle:'solid', routing:'elbow', width:2, color:'#64748b', label:'', labelT:0.5 }, o); }
+  function startConnect(anchorEl, e){
+    e.preventDefault(); e.stopPropagation(); flowDragging=true;
+    const from = { block: anchorEl.closest('.fb').dataset.id, anchor: anchorEl.dataset.anchor };
+    const tmp = document.createElementNS(SVGNS,'path');
+    tmp.setAttribute('class','flow-tmp'); tmp.setAttribute('fill','none'); tmp.setAttribute('stroke','#3b82f6'); tmp.setAttribute('stroke-width','2'); tmp.setAttribute('stroke-dasharray','6 4');
+    flowEdges.appendChild(tmp);
+    function mv(ev){ const w=clientToWorld(ev.clientX,ev.clientY); const p1=anchorPoint(from,w); tmp.setAttribute('d','M '+p1.x+' '+p1.y+' L '+w.x+' '+w.y); }
+    function up(ev){
+      window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up);
+      tmp.remove(); flowDragging=false;
+      const t = document.elementFromPoint(ev.clientX, ev.clientY);
+      const tb = t && t.closest && t.closest('#flow-blocks .fb');
+      let to;
+      if(tb && tb.dataset.id !== from.block) to = { block: tb.dataset.id, anchor:'auto' };
+      else { const w = clientToWorld(ev.clientX, ev.clientY); to = { x:w.x, y:w.y }; }
+      const rec = mkEdge({ from, to });
+      connectors.push(rec); renderEdges(); selectEl(rec,'edge'); scheduleFlowSave();
+    }
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }
+  function addFreeSegment(){
+    const r=flowCanvas.getBoundingClientRect(); const c=clientToWorld(r.left+r.width/2, r.top+r.height/2);
+    const rec = mkEdge({ from:{x:c.x-90,y:c.y}, to:{x:c.x+90,y:c.y}, routing:'straight' });
+    connectors.push(rec); renderEdges(); selectEl(rec,'edge'); scheduleFlowSave();
+  }
+  function removeEdge(rec){
+    const i = connectors.indexOf(rec); if(i<0) return;
+    connectors.splice(i,1);
+    if(selected.type==='edge' && selected.ref===rec) selected={type:null,ref:null};
+    renderEdges(); renderSidebar();
+    undoStack.push({ edge:rec, index:i }); showToast('已删除连线'); scheduleFlowSave();
+  }
+  function startEndpointDrag(rec, which, e){
+    flowDragging=true;
+    function mv(ev){ const w=clientToWorld(ev.clientX,ev.clientY); rec[which]={x:w.x,y:w.y}; renderEdges(); }
+    function up(ev){
+      window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); flowDragging=false;
+      const t=document.elementFromPoint(ev.clientX,ev.clientY); const tb=t&&t.closest&&t.closest('#flow-blocks .fb');
+      if(tb) rec[which]={ block:tb.dataset.id, anchor:'auto' };
+      renderEdges(); scheduleFlowSave();
+    }
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }
+  // select / label edges
+  flowEdges.addEventListener('pointerdown', e=>{ const p=e.target.closest('path.edge'); if(!p) return; const rec=connectors.find(c=>c.id===p.dataset.id); if(rec){ selectEl(rec,'edge'); e.stopPropagation(); } });
+  flowEdges.addEventListener('dblclick', e=>{
+    const p=e.target.closest('path.edge'); if(!p) return;
+    const rec=connectors.find(c=>c.id===p.dataset.id); if(!rec) return;
+    if(!rec.label) rec.label='文字';
+    renderEdges(); selectEl(rec,'edge'); scheduleFlowSave();
+    const lab=flowLabels.querySelector('.edge-label[data-id="'+cssEsc(rec.id)+'"]'); if(lab) lab.focus();
+  });
+  flowLabels.addEventListener('input', e=>{ const lab=e.target.closest('.edge-label'); if(!lab) return; const rec=connectors.find(c=>c.id===lab.dataset.id); if(rec){ rec.label=lab.textContent; scheduleFlowSave(); } });
+  flowLabels.addEventListener('focusout', e=>{ const lab=e.target.closest('.edge-label'); if(!lab) return; const rec=connectors.find(c=>c.id===lab.dataset.id); if(rec && !lab.textContent.trim()){ rec.label=''; renderEdges(); scheduleFlowSave(); } });
+
+  // ---- edge geometry + rendering --------------------------------------------
+  function blockById(id){ return flowBlocks.querySelector('.fb[data-id="'+cssEsc(id)+'"]'); }
+  function blockRect(el){ return { x:el.offsetLeft, y:el.offsetTop, w:el.offsetWidth, h:el.offsetHeight }; }
+  function endCenter(end){ if(end.block){ const el=blockById(end.block); if(!el) return null; const r=blockRect(el); return {x:r.x+r.w/2,y:r.y+r.h/2}; } return {x:end.x,y:end.y}; }
+  function pickSide(r,p){ const cx=r.x+r.w/2, cy=r.y+r.h/2; if(!p) return 'bottom'; const dx=p.x-cx, dy=p.y-cy; return Math.abs(dx)>Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'bottom':'top'); }
+  function dirToward(a,b){ const dx=b.x-a.x, dy=b.y-a.y; return Math.abs(dx)>Math.abs(dy) ? [Math.sign(dx)||1,0] : [0,Math.sign(dy)||1]; }
+  function anchorPoint(end, toward){
+    if(end.block){
+      const el=blockById(end.block); if(!el) return null; const r=blockRect(el);
+      let a=end.anchor||'auto'; if(a==='auto') a=pickSide(r,toward);
+      if(a==='top')    return { x:r.x+r.w/2, y:r.y,       dir:[0,-1] };
+      if(a==='bottom') return { x:r.x+r.w/2, y:r.y+r.h,   dir:[0, 1] };
+      if(a==='left')   return { x:r.x,       y:r.y+r.h/2, dir:[-1,0] };
+      if(a==='right')  return { x:r.x+r.w,   y:r.y+r.h/2, dir:[ 1,0] };
+      return { x:r.x+r.w/2, y:r.y+r.h/2, dir:[0,0] };
+    }
+    return { x:end.x, y:end.y, dir: toward ? dirToward({x:end.x,y:end.y}, toward) : [0,1] };
+  }
+  function edgeGeom(rec){ const c1=endCenter(rec.from), c2=endCenter(rec.to); if(!c1||!c2) return null; const p1=anchorPoint(rec.from,c2), p2=anchorPoint(rec.to,c1); if(!p1||!p2) return null; return {p1,p2}; }
+  function pathD(rec,p1,p2){
+    if(rec.routing==='straight') return 'M '+p1.x+' '+p1.y+' L '+p2.x+' '+p2.y;
+    if(rec.routing==='curved'){
+      const k=Math.max(40, Math.hypot(p2.x-p1.x,p2.y-p1.y)*0.4);
+      return 'M '+p1.x+' '+p1.y+' C '+(p1.x+p1.dir[0]*k)+' '+(p1.y+p1.dir[1]*k)+' '+(p2.x+p2.dir[0]*k)+' '+(p2.y+p2.dir[1]*k)+' '+p2.x+' '+p2.y;
+    }
+    if(p1.dir[1]!==0){ const my=(p1.y+p2.y)/2; return 'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y; }
+    if(p1.dir[0]!==0){ const mx=(p1.x+p2.x)/2; return 'M '+p1.x+' '+p1.y+' L '+mx+' '+p1.y+' L '+mx+' '+p2.y+' L '+p2.x+' '+p2.y; }
+    const my=(p1.y+p2.y)/2; return 'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y;
+  }
+  function labelPoint(rec,p1,p2){ const t=(rec.labelT==null?0.5:rec.labelT); return { x:p1.x+(p2.x-p1.x)*t, y:p1.y+(p2.y-p1.y)*t }; }
+  function norm(x,y){ const m=Math.hypot(x,y)||1; return [x/m,y/m]; }
+  function endDir(pt, other){ return (pt.dir && (pt.dir[0]||pt.dir[1])) ? [-pt.dir[0],-pt.dir[1]] : norm(pt.x-other.x, pt.y-other.y); }
+  function mkPath(d){ const p=document.createElementNS(SVGNS,'path'); p.setAttribute('d',d); return p; }
+  function arrowHead(pt, dir, type, color, width){
+    const ang=Math.atan2(dir[1],dir[0]), size=7+width*1.3, a1=ang+Math.PI*0.82, a2=ang-Math.PI*0.82;
+    const x1=pt.x+Math.cos(a1)*size, y1=pt.y+Math.sin(a1)*size, x2=pt.x+Math.cos(a2)*size, y2=pt.y+Math.sin(a2)*size;
+    const el=document.createElementNS(SVGNS,'path');
+    if(type==='solid'){ el.setAttribute('d','M '+pt.x+' '+pt.y+' L '+x1+' '+y1+' L '+x2+' '+y2+' Z'); el.setAttribute('fill',color); el.setAttribute('stroke',color); }
+    else { el.setAttribute('d','M '+x1+' '+y1+' L '+pt.x+' '+pt.y+' L '+x2+' '+y2); el.setAttribute('fill','none'); el.setAttribute('stroke',color); el.setAttribute('stroke-width', type==='thin'?1.3:2); }
+    el.setAttribute('stroke-linejoin','round'); el.setAttribute('stroke-linecap','round');
+    return el;
+  }
+  function renderEdges(){
+    flowEdges.innerHTML=''; flowLabels.innerHTML='';
+    connectors.forEach(rec=>{
+      const g=edgeGeom(rec); if(!g) return;            // skip edges whose bound block is gone
+      const {p1,p2}=g, d=pathD(rec,p1,p2);
+      if(selected.type==='edge' && selected.ref===rec){ const halo=mkPath(d); halo.setAttribute('stroke','rgba(59,130,246,.35)'); halo.setAttribute('stroke-width',(+rec.width)+6); halo.setAttribute('fill','none'); halo.setAttribute('stroke-linecap','round'); flowEdges.appendChild(halo); }
+      const hit=mkPath(d); hit.setAttribute('class','edge'); hit.dataset.id=rec.id; hit.setAttribute('stroke','transparent'); hit.setAttribute('stroke-width','16'); hit.setAttribute('fill','none'); flowEdges.appendChild(hit);
+      const path=mkPath(d); path.setAttribute('class','edge'); path.dataset.id=rec.id; path.setAttribute('stroke',rec.color); path.setAttribute('stroke-width',rec.width); path.setAttribute('fill','none'); path.setAttribute('stroke-linejoin','round'); path.setAttribute('stroke-linecap','round');
+      if(rec.lineStyle==='dashed') path.setAttribute('stroke-dasharray',(rec.width*3.5)+' '+(rec.width*2.5));
+      else if(rec.lineStyle==='dotted') path.setAttribute('stroke-dasharray','0.1 '+(rec.width*2.6));
+      flowEdges.appendChild(path);
+      if(rec.arrowEnd)   flowEdges.appendChild(arrowHead(p2, endDir(p2,p1), rec.arrowType, rec.color, +rec.width));
+      if(rec.arrowStart) flowEdges.appendChild(arrowHead(p1, endDir(p1,p2), rec.arrowType, rec.color, +rec.width));
+      if(rec.label){ const lp=labelPoint(rec,p1,p2); const lab=document.createElement('div'); lab.className='edge-label'; lab.contentEditable='true'; lab.spellcheck=false; lab.dataset.id=rec.id; lab.textContent=rec.label; lab.style.left=lp.x+'px'; lab.style.top=lp.y+'px'; flowLabels.appendChild(lab); }
+    });
+    if(selected.type==='edge') renderEdgeHandles(selected.ref);
+  }
+  function renderEdgeHandles(rec){
+    const g=edgeGeom(rec); if(!g) return;
+    [['from',g.p1],['to',g.p2]].forEach(([which,p])=>{
+      const h=document.createElement('div'); h.className='edge-handle'; h.style.left=p.x+'px'; h.style.top=p.y+'px';
+      h.addEventListener('pointerdown', ev=>{ ev.preventDefault(); ev.stopPropagation(); startEndpointDrag(rec,which,ev); });
+      flowLabels.appendChild(h);
+    });
+  }
+
+  // ---- contextual property sidebar ------------------------------------------
+  function sel(a,b){ return a===b ? ' selected' : ''; }
+  function hexOf(el, prop, fb){ const h=rgbToHex(getComputedStyle(el)[prop]); return (h && /^#[0-9a-f]{6}$/i.test(h)) ? h : fb; }
+  function renderSidebar(){
+    if(selected.type==='block'){ flowSidebar.innerHTML=blockPanel(selected.ref); wireBlockPanel(selected.ref); }
+    else if(selected.type==='edge'){ flowSidebar.innerHTML=edgePanel(selected.ref); wireEdgePanel(selected.ref); }
+    else { flowSidebar.innerHTML=emptyPanel(); wireEmptyPanel(); }
+    lucide.createIcons();
+  }
+  function blockPanel(el){
+    const head = el.querySelector(':scope > .fb-head');
+    return ''
+      + '<div class="fs-h"><i data-lucide="square"></i>组块（'+(el.dataset.type||'step')+'）</div>'
+      + '<div class="fs-grp">颜色</div>'
+      + '<div class="fs-row"><label>块底色</label><input type="color" data-k="bg" value="'+hexOf(el,'backgroundColor','#ffffff')+'"></div>'
+      + (head ? '<div class="fs-row"><label>标题栏色</label><input type="color" data-k="headBg" value="'+hexOf(head,'backgroundColor','#2563eb')+'"></div>' : '')
+      + '<div class="fs-row"><label>文字色</label><input type="color" data-k="color" value="'+hexOf(el,'color','#374151')+'"></div>'
+      + '<div class="fs-grp">添加内容</div>'
+      + '<div class="fs-addgrid">'
+      +   '<button data-add="text"><i data-lucide="type"></i>文字</button>'
+      +   '<button data-add="field"><i data-lucide="align-left"></i>状态行</button>'
+      +   '<button data-add="button"><i data-lucide="square"></i>按钮</button>'
+      +   '<button data-add="note"><i data-lucide="mail"></i>通知框</button>'
+      +   '<button data-add="icon"><i data-lucide="image"></i>图标</button>'
+      + '</div>'
+      + '<div class="fs-grp">操作</div>'
+      + '<button class="fs-btn danger" data-act="del"><i data-lucide="trash-2"></i>删除整个组块</button>';
+  }
+  function wireBlockPanel(el){
+    flowSidebar.querySelectorAll('input[type=color]').forEach(inp=> inp.addEventListener('input', ()=>{
+      const k=inp.dataset.k;
+      if(k==='bg') el.style.background=inp.value;
+      else if(k==='color') el.style.color=inp.value;
+      else if(k==='headBg'){ const h=el.querySelector(':scope > .fb-head'); if(h) h.style.background=inp.value; }
+      scheduleFlowSave();
+    }));
+    flowSidebar.querySelectorAll('button[data-add]').forEach(b=> b.addEventListener('click', ()=>{ addInto(el, b.dataset.add); scheduleFlowSave(); }));
+    flowSidebar.querySelector('[data-act="del"]').addEventListener('click', ()=>{ removeBlock(el,'已删除组块'); selectEl(null); });
+  }
+  function edgePanel(rec){
+    return ''
+      + '<div class="fs-h"><i data-lucide="spline"></i>连线</div>'
+      + '<div class="fs-grp">方向 / 箭头</div>'
+      + '<div class="fs-row"><label>起点箭头</label><div class="fs-seg"><button data-tg="arrowStart" class="'+(rec.arrowStart?'on':'')+'">'+(rec.arrowStart?'开':'关')+'</button></div></div>'
+      + '<div class="fs-row"><label>终点箭头</label><div class="fs-seg"><button data-tg="arrowEnd" class="'+(rec.arrowEnd?'on':'')+'">'+(rec.arrowEnd?'开':'关')+'</button></div></div>'
+      + '<div class="fs-row"><label>箭头样式</label><select data-k="arrowType"><option value="solid"'+sel(rec.arrowType,'solid')+'>实心</option><option value="open"'+sel(rec.arrowType,'open')+'>空心</option><option value="thin"'+sel(rec.arrowType,'thin')+'>细线</option></select></div>'
+      + '<div class="fs-grp">线型 / 路由</div>'
+      + '<div class="fs-row"><label>线型</label><select data-k="lineStyle"><option value="solid"'+sel(rec.lineStyle,'solid')+'>实线</option><option value="dashed"'+sel(rec.lineStyle,'dashed')+'>虚线</option><option value="dotted"'+sel(rec.lineStyle,'dotted')+'>点线</option></select></div>'
+      + '<div class="fs-row"><label>路由</label><select data-k="routing"><option value="straight"'+sel(rec.routing,'straight')+'>直线</option><option value="elbow"'+sel(rec.routing,'elbow')+'>折线</option><option value="curved"'+sel(rec.routing,'curved')+'>曲线</option></select></div>'
+      + '<div class="fs-grp">外观</div>'
+      + '<div class="fs-row"><label>粗细</label><input type="range" min="1" max="8" step="0.5" data-k="width" value="'+rec.width+'"></div>'
+      + '<div class="fs-row"><label>颜色</label><input type="color" data-k="color" value="'+(/^#[0-9a-f]{6}$/i.test(rec.color)?rec.color:'#64748b')+'"></div>'
+      + '<div class="fs-grp">线上文字</div>'
+      + '<div class="fs-row"><input type="text" data-k="label" placeholder="（空）" value="'+(rec.label||'').replace(/"/g,'&quot;')+'" style="width:100%"></div>'
+      + '<div class="fs-grp">操作</div>'
+      + '<button class="fs-btn danger" data-act="del"><i data-lucide="trash-2"></i>删除连线</button>';
+  }
+  function wireEdgePanel(rec){
+    flowSidebar.querySelectorAll('[data-tg]').forEach(b=> b.addEventListener('click', ()=>{ rec[b.dataset.tg]=!rec[b.dataset.tg]; renderEdges(); renderSidebar(); scheduleFlowSave(); }));
+    flowSidebar.querySelectorAll('select[data-k],input[data-k]').forEach(inp=> inp.addEventListener('input', ()=>{
+      rec[inp.dataset.k] = inp.dataset.k==='width' ? parseFloat(inp.value) : inp.value;
+      renderEdges(); scheduleFlowSave();
+    }));
+    flowSidebar.querySelector('[data-act="del"]').addEventListener('click', ()=> removeEdge(rec));
+  }
+  function emptyPanel(){
+    return ''
+      + '<div class="fs-h"><i data-lucide="mouse-pointer-click"></i>未选中</div>'
+      + '<p class="fs-empty">点击<b>组块</b>或<b>连线</b>编辑其属性。<br>拖组块边缘的蓝点可拉出连线。<br>双击连线可加线上文字。</p>'
+      + '<div class="fs-grp">画布</div>'
+      + '<div class="fs-row"><label>网格吸附</label><div class="fs-seg"><button data-act="grid" class="'+(gridSnap?'on':'')+'">'+(gridSnap?'开':'关')+'</button></div></div>'
+      + '<button class="fs-btn" data-act="fit"><i data-lucide="maximize"></i>适应窗口</button>';
+  }
+  function wireEmptyPanel(){
+    const g=flowSidebar.querySelector('[data-act="grid"]'); if(g) g.addEventListener('click', ()=>{ gridSnap=!gridSnap; renderSidebar(); });
+    const f=flowSidebar.querySelector('[data-act="fit"]'); if(f) f.addEventListener('click', flowFit);
+  }
+
+  // ---- add-block menu (toolbar "组块") --------------------------------------
+  function openFbAddMenu(e){
+    const m=document.getElementById('fb-add-menu'); m.classList.toggle('show');
+    const r=e.currentTarget.getBoundingClientRect(); m.style.top=(r.bottom+6)+'px'; m.style.left=r.left+'px';
+  }
+  function addFlowBlock(type){
+    const r=flowCanvas.getBoundingClientRect(); const c=clientToWorld(r.left+r.width/2, r.top+r.height/2);
+    const presets = {
+      step:     { head:'STEP', headBg:'#2563eb', body:'<div class="fb-row"><i data-lucide="circle"></i><span class="fb-strong ce">Title</span></div>'+fbList(['Item one','Item two']) },
+      decision: { body:'<div class="fb-row" style="justify-content:center"><i data-lucide="zap"></i><span class="fb-strong ce">DECISION</span></div><div class="ce" style="text-align:center">Describe the choice</div>' },
+      status:   { body:'<div class="fb-row"><i data-lucide="info"></i><span class="fb-strong ce">Status</span></div><div class="card-body ce">Details</div>', bg:'#eff6ff', borderColor:'#93c5fd' },
+      terminal: { icon:'circle', body:'Node', bg:'#2563eb', color:'#ffffff' },
+      note:     { body:'<div class="ce">Note text</div>' }
+    };
+    const el = mkBlock(Object.assign({ type, x:Math.round(c.x-150), y:Math.round(c.y-40) }, presets[type]||presets.step));
+    refreshIcons(); renderEdges(); selectEl(el,'block'); scheduleFlowSave();
+  }
+  document.getElementById('fb-add-menu').querySelectorAll('button[data-fb]').forEach(b=> b.addEventListener('click', ()=>{ addFlowBlock(b.dataset.fb); document.getElementById('fb-add-menu').classList.remove('show'); }));
+  document.addEventListener('mousedown', e=>{ const m=document.getElementById('fb-add-menu'); if(m.classList.contains('show') && !m.contains(e.target) && !(e.target.closest && e.target.closest('[onclick^="openFbAddMenu"]'))) m.classList.remove('show'); });
+
+  // ---- keyboard -------------------------------------------------------------
+  window.addEventListener('keydown', e=>{
+    if(currentView()!=='flow') return;
+    if(e.key==='Escape'){ selectEl(null); return; }
+    if(e.key==='Delete'){
+      if(document.activeElement && document.activeElement.isContentEditable) return;
+      if(selected.type==='edge') removeEdge(selected.ref);
+      else if(selected.type==='block'){ removeBlock(selected.ref,'已删除组块'); selectEl(null); }
+    }
+  });
+
+  // ---- serialization / autosave / restore -----------------------------------
+  function serializeFlow(){
+    const clone = flowBlocks.cloneNode(true);
+    clone.querySelectorAll('.fb-anchor,.fb-resize,.add-ui').forEach(n=>n.remove());
+    clone.querySelectorAll('.fb.selected,.rm-active,.rm-armed').forEach(n=>n.classList.remove('selected','rm-active','rm-armed'));
+    return { view:'flow', blocksHtml: clone.innerHTML, connectors: connectors.map(c=>JSON.parse(JSON.stringify(c))), colors: currentColors() };
+  }
+  function flowSaveState(){ try{ localStorage.setItem(FLOW_LS_KEY, JSON.stringify({ v:1, ...serializeFlow() })); showSaved(); }catch(e){} }
+  function scheduleFlowSave(){ if(!flowReady) return; clearTimeout(flowSaveTimer); flowSaveTimer=setTimeout(flowSaveState,600); }
+  function flowRestore(){
+    let data; try{ data=JSON.parse(localStorage.getItem(FLOW_LS_KEY)||'null'); }catch(e){ return false; }
+    if(!data || typeof data.blocksHtml!=='string') return false;
+    flowBlocks.innerHTML = safeBoardHtml(data.blocksHtml);
+    connectors = Array.isArray(data.connectors) ? data.connectors : [];
+    applyColors(data.colors); initFlow(); return true;
+  }
+  function initFlow(){
+    flowBlocks.querySelectorAll('.ce').forEach(el=>{ el.setAttribute('contenteditable','true'); el.setAttribute('spellcheck','false'); });
+    flowBlocks.querySelectorAll('.fb').forEach(ensureBlockChrome);
+    lucide.createIcons();
+    renderEdges(); renderSidebar();
+  }
+
+  // ---- initial flowchart template (verbatim from the three source images) ----
+  function fbList(items){ return '<ul class="fb-list">'+items.map(t=>'<li class="ce">'+t+'</li>').join('')+'</ul>'; }
+  function fbActions(icon,label){ return '<div class="fb-row"><i data-lucide="'+icon+'"></i><span class="fb-strong ce">'+label+'</span></div>'; }
+  function fbSub(icon,html,style){ return '<div class="fb-sub fb-row"'+(style?' style="'+style+'"':'')+'>'+(icon?'<i data-lucide="'+icon+'"></i>':'')+'<span class="ce">'+html+'</span></div>'; }
+  function buildFlowTemplate(){
+    connectors = [];
+    mkBlock({ id:'b-start', type:'terminal', x:660, y:30, w:240, icon:'play', body:'Application Received', bg:'#2563eb', color:'#ffffff' });
+    mkBlock({ id:'b-step1', type:'step', x:500, y:130, w:470, head:'STEP 1: ACCEPT APPLICATION - UNDER REVIEW', headBg:'#d97706', bg:'#fffbeb',
+      body: fbActions('clock','Franchisor Actions:')
+        + fbList(['Franchisor logs in through their ID','Compatibility score is shown from WordPress','Accept application for review','Provide timeline for decision (7 days wait period)','System sends notification to franchisee with expected decision date'])
+        + fbSub('landmark','<b>Timeline:</b> 7 Business Days Review Period','background:#fef9c3;border-color:#fde68a') });
+    mkBlock({ id:'b-decision', type:'decision', x:510, y:440, w:450,
+      body: '<div class="fb-row" style="justify-content:center"><i data-lucide="zap" style="color:#d97706"></i><span class="fb-strong ce" style="color:#6d28d9">DECISION POINT</span></div>'
+        + '<div class="ce" style="text-align:center;color:#7c3aed;margin-top:2px">After 7-Day Review Period</div>'
+        + '<div class="ce" style="text-align:center;color:#7c3aed">Franchisor chooses next action</div>'
+        + '<div class="fb-sub" style="background:#fff5f5;border-color:#fecaca">'
+          + '<div class="fb-row"><i data-lucide="alert-triangle" style="color:#b45309"></i><span class="fb-strong ce" style="color:#b45309">DISCLAIMER:</span></div>'
+          + '<div class="ce" style="margin-top:3px">If no action is taken after 7-day review period, application will <b>AUTO-DECLINE</b>. Admin will receive email notification that application declined due to no action taken.</div>'
+          + '<div class="fb-sub fb-row" style="background:#fee2e2;border-color:#fecaca"><i data-lucide="message-square"></i><span class="ce">Sana to share email content for auto-decline notification</span></div>'
+        + '</div>' });
+    mkBlock({ id:'b-step2', type:'step', x:90, y:800, w:420, head:'STEP 2: FINANCIAL CHECK', headBg:'#2563eb',
+      body: fbActions('dollar-sign','Franchisor Actions:')
+        + fbList([
+            'Click <b>"Financial Health Check Required"</b> button on dashboard',
+            'System automatically triggers email notification to franchisee email ID (retrieved from application stored in WordPress). <b>Subject:</b> Financial Health Check Required. <b>Email Content:</b> "Please submit your financial health check within 5 Business days." ⏰ Timer Active: 5 Business Days to Submit',
+            'Application declined if no action taken after 5 days. Automated email sent to franchisee notifying application declined due to no financial submission.',
+            'Once the financial check is complete, franchisor gets notification via email to take further action (either approve or decline application).'])
+        + fbSub('mail','<i data-lucide="message-square"></i> Sana to share email content','background:#fff7ed;border-color:#fed7aa')
+        + '<div class="fb-sub"><div class="fb-row"><i data-lucide="info"></i><span class="fb-strong ce">Backend Integration:</span></div>'
+          + fbList([
+              'Email ID retrieved from franchisee\'s WordPress application',
+              'Linked with WordPress backend through <b>Inverite Financial Health Check</b>',
+              'When "Financial Health Check Required" button is clicked and email is sent, button is removed and status shows <b>"In Progress"</b>',
+              'When financial check is completed, data automatically syncs to dashboard via API'])
+        + '</div>'
+        + '<div class="fb-sub"><div class="fb-row"><i data-lucide="file-text"></i><span class="fb-strong ce">Ad-Hoc Action Available:</span></div>'
+          + '<div class="ce" style="margin-top:3px"><b>On Successful Verification from WordPress:</b></div>'
+          + fbList(['Button label changes to <b>"Verification Complete - View Details"</b>','Clicking this button opens franchisee financial details in new window'])
+        + '</div>' });
+    mkBlock({ id:'b-step3', type:'step', x:620, y:800, w:340, head:'STEP 3: APPLICATION APPROVED', headBg:'#16a34a',
+      body: fbActions('check-circle','Franchisor Actions:')
+        + fbList(['Click "Approve" button (no financial check needed)','Application immediately approved','System sends approval notification to franchisee'])
+        + '<div class="fb-sub"><div class="fb-row"><i data-lucide="mail"></i><span class="fb-strong ce">Automated Email Sent:</span></div>'
+          + '<div class="ce" style="margin-top:3px">Franchisee notified of application approval with next steps</div>'
+          + fbSub('message-square','Sana to share email content','background:#f0fdf4;border-color:#bbf7d0')
+        + '</div>' });
+    mkBlock({ id:'b-step4', type:'step', x:1040, y:800, w:300, head:'STEP 4: APPLICATION DECLINED', headBg:'#dc2626', bg:'#fff5f5',
+      body: fbActions('x-circle','Franchisor Actions:')
+        + fbList(['Click "Decline" button'])
+        + '<div class="fb-sub"><div class="fb-row"><i data-lucide="mail"></i><span class="fb-strong ce">Automated Email Sent:</span></div>'
+          + fbSub('message-square','Sana to share email content','background:#fee2e2;border-color:#fecaca')
+        + '</div>' });
+    mkBlock({ id:'b-end', type:'terminal', x:1090, y:1060, w:200, icon:'octagon', body:'Process Ends', bg:'#dc2626', color:'#ffffff' });
+    mkBlock({ id:'b-await', type:'status', x:140, y:1430, w:320, bg:'#eff6ff', borderColor:'#93c5fd',
+      body: '<div class="fb-row"><i data-lucide="hourglass"></i><span class="fb-strong ce">Awaiting Financial Submission</span></div>'
+        + '<div class="ce" style="color:#2563eb;margin-top:3px">Franchisee has 5 business days to submit</div>'
+        + '<div class="ce fb-muted" style="font-style:italic">WordPress → API → Dashboard sync</div>' });
+    mkBlock({ id:'b-done', type:'status', x:140, y:1580, w:320, bg:'#f0fdf4', borderColor:'#86efac',
+      body: '<div class="fb-row"><i data-lucide="check-circle"></i><span class="fb-strong ce">Financial Check Completed</span></div>'
+        + '<div class="ce" style="color:#16a34a;margin-top:3px">Auto-synced from WordPress via API</div>'
+        + '<div class="fb-strong ce">Status visible on dashboard</div>' });
+    mkBlock({ id:'b-note', type:'note', x:600, y:1520, w:360, body:'<div class="ce">Both approval paths converge here ↓</div>' });
+    mkBlock({ id:'b-post', type:'step', x:540, y:1720, w:560, head:'POST-APPROVAL STATE', headBg:'#16a34a', bg:'#f0fdf4',
+      body: '<div class="fb-row"><i data-lucide="check-circle"></i><span class="fb-strong ce">Application Status: APPROVED</span></div>'
+        + fbList([
+            'Franchisee can proceed with onboarding process',
+            '<b style="color:#b91c1c">WITHDRAWAL OPTION AVAILABLE</b>',
+            'Franchisor can withdraw approval at ANY point post-approval',
+            'If "Withdraw Application" button clicked:'])
+        + '<ul class="fb-list" style="margin-top:0">'
+          + '<li class="ce">Email sent to: <b>Franchisee</b></li>'
+          + '<li class="ce">Email sent to: <b>Franchisor</b> (confirmation)</li>'
+          + '<li class="ce">Email sent to: <b>Admin</b> (system record)</li>'
+          + '<li class="ce">Email sent to: <b>Partner</b></li>'
+        + '</ul>'
+        + '<div class="fb-strong ce" style="margin-top:6px">All parties notified simultaneously</div>' });
+
+    const E = (from, fa, to, ta) => connectors.push(mkEdge({ from:{block:from,anchor:fa}, to:{block:to,anchor:ta} }));
+    E('b-start','bottom','b-step1','top');
+    E('b-step1','bottom','b-decision','top');
+    E('b-decision','left','b-step2','top');
+    E('b-decision','bottom','b-step3','top');
+    E('b-decision','right','b-step4','top');
+    E('b-step2','bottom','b-await','top');
+    E('b-await','bottom','b-done','top');
+    E('b-done','bottom','b-post','left');
+    E('b-step3','bottom','b-post','top');
+    E('b-step4','bottom','b-end','top');
+  }
+
+  boot();   // wire both views, restore/seed, pick the default view
 </script>
 </body>
 </html>
