@@ -384,6 +384,8 @@
 
   /* edge endpoint handles + labels (live in the world-space labels layer) */
   .edge-handle{position:absolute; width:13px; height:13px; border-radius:50%; background:#fff; border:2px solid #3b82f6; margin:-7px 0 0 -7px; cursor:move; pointer-events:auto; z-index:6;}
+  .edge-handle.elbow-handle{background:#f59e0b; border-color:#fff; border-radius:4px; cursor:grab;}
+  .edge-handle.elbow-handle:active{cursor:grabbing;}
   body.exporting .edge-handle, body.exporting .flow-tmp{display:none !important;}
   .edge-label{position:absolute; transform:translate(-50%,-50%); background:#fff; padding:1px 6px; border-radius:6px; font-size:11px; color:#374151; border:1px solid #e5e7eb; pointer-events:auto; white-space:nowrap;}
   .edge-label:focus{outline:2px solid #3b82f6;}
@@ -437,6 +439,8 @@
     <div class="tb-group tb-flow">
       <button class="tbtn" onclick="openFbAddMenu(event)" title="新增组块"><i data-lucide="plus-square"></i>组块</button>
       <button class="tbtn" onclick="addFreeSegment()" title="新增自由线段"><i data-lucide="move-up-right"></i>线段</button>
+      <button class="tbtn" onclick="flowUndo()" title="撤销 (Ctrl+Z)"><i data-lucide="undo-2"></i></button>
+      <button class="tbtn" onclick="flowRedo()" title="重做 (Ctrl+Shift+Z / Ctrl+Y)"><i data-lucide="redo-2"></i></button>
       <button class="tbtn" onclick="flowZoom(-1)" title="缩小"><i data-lucide="zoom-out"></i></button>
       <button class="tbtn" onclick="flowFit()" title="适应窗口"><i data-lucide="maximize"></i></button>
       <button class="tbtn" onclick="flowZoom(1)" title="放大"><i data-lucide="zoom-in"></i></button>
@@ -1011,7 +1015,7 @@
     if(!last) return;
     if(last.edge){                                          // a deleted flow connector
       connectors.splice(Math.min(last.index, connectors.length), 0, last.edge);
-      renderEdges(); hideToast(); return;
+      renderEdges(); hideToast(); scheduleFlowSave(); return;
     }
     if(last.next && last.next.parentNode === last.parent) last.parent.insertBefore(last.el, last.next);
     else last.parent.appendChild(last.el);
@@ -1338,6 +1342,7 @@
     fobs.observe(flowBlocks, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['style'] });
     flowBlocks.addEventListener('input', scheduleFlowSave);
     flowReady = true;
+    recordHistory();                                       // seed undo history with the initial state
 
     window.addEventListener('beforeunload', () => {
       if(autosaveReady){ clearTimeout(saveTimer); saveState(); }
@@ -1490,7 +1495,7 @@
     document.querySelectorAll('.tb-flow').forEach(g => g.hidden = (v !== 'flow'));
     document.querySelectorAll('.tb-step').forEach(g => g.hidden = (v !== 'step'));
     document.getElementById('hint').textContent = v === 'flow'
-      ? '拖动组块移动 · 拖组块边缘蓝点拉出连线 · 点击连线/组块在右侧改属性 · 双击连线加文字 · 滚轮缩放 · 拖空白平移'
+      ? '拖蓝点连线 · 拖橙色方块调折线拐角 · 复制/剪切/粘贴/再制 Ctrl+C/X/V/D · 撤销/重做 Ctrl+Z / Ctrl+Shift+Z · 双击连线加文字 · 滚轮缩放 · 拖空白平移'
       : '点击文字直接编辑 · 选中文字可加粗/改色 · 悬停出现 ＋（加内容）和 ×（删除）· 改动自动保存';
     try{ localStorage.setItem('active-view', v); }catch(e){}
     if(v === 'flow'){ applyTransform(); renderEdges(); }
@@ -1621,7 +1626,7 @@
   }
 
   // ---- connector creation + endpoint editing --------------------------------
-  function mkEdge(o){ return Object.assign({ id:nextId('e'), arrowStart:false, arrowEnd:true, arrowType:'solid', lineStyle:'solid', routing:'elbow', width:2, color:'#64748b', label:'', labelT:0.5 }, o); }
+  function mkEdge(o){ return Object.assign({ id:nextId('e'), arrowStart:false, arrowEnd:true, arrowType:'solid', lineStyle:'solid', routing:'elbow', elbow:0.5, width:2, color:'#64748b', label:'', labelT:0.5 }, o); }
   function startConnect(anchorEl, e){
     e.preventDefault(); e.stopPropagation(); flowDragging=true;
     const from = { block: anchorEl.closest('.fb').dataset.id, anchor: anchorEl.dataset.anchor };
@@ -1638,7 +1643,7 @@
       if(tb && tb.dataset.id !== from.block) to = { block: tb.dataset.id, anchor:'auto' };
       else { const w = clientToWorld(ev.clientX, ev.clientY); to = { x:w.x, y:w.y }; }
       const rec = mkEdge({ from, to });
-      connectors.push(rec); renderEdges(); selectEl(rec,'edge'); scheduleFlowSave();
+      connectors.push(rec); renderEdges(); selectEl(rec,'edge'); scheduleFlowSave(); recordHistory();
     }
     window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
   }
@@ -1652,7 +1657,7 @@
     connectors.splice(i,1);
     if(selected.type==='edge' && selected.ref===rec) selected={type:null,ref:null};
     renderEdges(); renderSidebar();
-    undoStack.push({ edge:rec, index:i }); showToast('已删除连线'); scheduleFlowSave();
+    undoStack.push({ edge:rec, index:i }); showToast('已删除连线'); scheduleFlowSave(); recordHistory();
   }
   function startEndpointDrag(rec, which, e){
     flowDragging=true;
@@ -1702,9 +1707,17 @@
       const k=Math.max(40, Math.hypot(p2.x-p1.x,p2.y-p1.y)*0.4);
       return 'M '+p1.x+' '+p1.y+' C '+(p1.x+p1.dir[0]*k)+' '+(p1.y+p1.dir[1]*k)+' '+(p2.x+p2.dir[0]*k)+' '+(p2.y+p2.dir[1]*k)+' '+p2.x+' '+p2.y;
     }
-    if(p1.dir[1]!==0){ const my=(p1.y+p2.y)/2; return 'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y; }
-    if(p1.dir[0]!==0){ const mx=(p1.x+p2.x)/2; return 'M '+p1.x+' '+p1.y+' L '+mx+' '+p1.y+' L '+mx+' '+p2.y+' L '+p2.x+' '+p2.y; }
-    const my=(p1.y+p2.y)/2; return 'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y;
+    // elbow: the bend position is adjustable (rec.elbow 0..1) so a Z can collapse to an L
+    const t = (rec.elbow==null ? 0.5 : rec.elbow);
+    if(p1.dir[1]!==0){ const my=p1.y+(p2.y-p1.y)*t; return 'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y; }
+    if(p1.dir[0]!==0){ const mx=p1.x+(p2.x-p1.x)*t; return 'M '+p1.x+' '+p1.y+' L '+mx+' '+p1.y+' L '+mx+' '+p2.y+' L '+p2.x+' '+p2.y; }
+    const my=p1.y+(p2.y-p1.y)*t; return 'M '+p1.x+' '+p1.y+' L '+p1.x+' '+my+' L '+p2.x+' '+my+' L '+p2.x+' '+p2.y;
+  }
+  // For elbow edges: where the draggable corner handle sits, and which axis it moves on.
+  function elbowHandle(rec,p1,p2){
+    const t=(rec.elbow==null?0.5:rec.elbow);
+    if(p1.dir[0]!==0 && p1.dir[1]===0){ const mx=p1.x+(p2.x-p1.x)*t; return { x:mx, y:(p1.y+p2.y)/2, axis:'x' }; }
+    const my=p1.y+(p2.y-p1.y)*t; return { x:(p1.x+p2.x)/2, y:my, axis:'y' };
   }
   function labelPoint(rec,p1,p2){ const t=(rec.labelT==null?0.5:rec.labelT); return { x:p1.x+(p2.x-p1.x)*t, y:p1.y+(p2.y-p1.y)*t }; }
   function norm(x,y){ const m=Math.hypot(x,y)||1; return [x/m,y/m]; }
@@ -1743,6 +1756,22 @@
       h.addEventListener('pointerdown', ev=>{ ev.preventDefault(); ev.stopPropagation(); startEndpointDrag(rec,which,ev); });
       flowLabels.appendChild(h);
     });
+    if(rec.routing==='elbow'){                            // draggable corner: slide the bend (Z <-> L)
+      const c=elbowHandle(rec,g.p1,g.p2);
+      const h=document.createElement('div'); h.className='edge-handle elbow-handle'; h.style.left=c.x+'px'; h.style.top=c.y+'px';
+      h.addEventListener('pointerdown', ev=>{ ev.preventDefault(); ev.stopPropagation(); startElbowDrag(rec,g.p1,g.p2,c.axis,ev); });
+      flowLabels.appendChild(h);
+    }
+  }
+  function startElbowDrag(rec,p1,p2,axis,e){
+    flowDragging=true;
+    function mv(ev){
+      const w=clientToWorld(ev.clientX,ev.clientY);
+      const t = axis==='x' ? (w.x-p1.x)/((p2.x-p1.x)||1) : (w.y-p1.y)/((p2.y-p1.y)||1);
+      rec.elbow=Math.max(0,Math.min(1,t)); renderEdges();
+    }
+    function up(){ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); flowDragging=false; scheduleFlowSave(); }
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
   }
 
   // ---- contextual property sidebar ------------------------------------------
@@ -1794,6 +1823,7 @@
       + '<div class="fs-grp">线型 / 路由</div>'
       + '<div class="fs-row"><label>线型</label><select data-k="lineStyle"><option value="solid"'+sel(rec.lineStyle,'solid')+'>实线</option><option value="dashed"'+sel(rec.lineStyle,'dashed')+'>虚线</option><option value="dotted"'+sel(rec.lineStyle,'dotted')+'>点线</option></select></div>'
       + '<div class="fs-row"><label>路由</label><select data-k="routing"><option value="straight"'+sel(rec.routing,'straight')+'>直线</option><option value="elbow"'+sel(rec.routing,'elbow')+'>折线</option><option value="curved"'+sel(rec.routing,'curved')+'>曲线</option></select></div>'
+      + (rec.routing==='elbow' ? '<div class="fs-row"><label>拐角位置</label><input type="range" min="0" max="1" step="0.02" data-k="elbow" value="'+(rec.elbow==null?0.5:rec.elbow)+'"></div>' : '')
       + '<div class="fs-grp">外观</div>'
       + '<div class="fs-row"><label>粗细</label><input type="range" min="1" max="8" step="0.5" data-k="width" value="'+rec.width+'"></div>'
       + '<div class="fs-row"><label>颜色</label><input type="color" data-k="color" value="'+(/^#[0-9a-f]{6}$/i.test(rec.color)?rec.color:'#64748b')+'"></div>'
@@ -1805,8 +1835,10 @@
   function wireEdgePanel(rec){
     flowSidebar.querySelectorAll('[data-tg]').forEach(b=> b.addEventListener('click', ()=>{ rec[b.dataset.tg]=!rec[b.dataset.tg]; renderEdges(); renderSidebar(); scheduleFlowSave(); }));
     flowSidebar.querySelectorAll('select[data-k],input[data-k]').forEach(inp=> inp.addEventListener('input', ()=>{
-      rec[inp.dataset.k] = inp.dataset.k==='width' ? parseFloat(inp.value) : inp.value;
+      const k=inp.dataset.k;
+      rec[k] = (k==='width' || k==='elbow') ? parseFloat(inp.value) : inp.value;
       renderEdges(); scheduleFlowSave();
+      if(k==='routing') renderSidebar();                 // show/hide the 拐角位置 slider
     }));
     flowSidebar.querySelector('[data-act="del"]').addEventListener('click', ()=> removeEdge(rec));
   }
@@ -1838,19 +1870,92 @@
       note:     { body:'<div class="ce">Note text</div>' }
     };
     const el = mkBlock(Object.assign({ type, x:Math.round(c.x-150), y:Math.round(c.y-40) }, presets[type]||presets.step));
-    refreshIcons(); renderEdges(); selectEl(el,'block'); scheduleFlowSave();
+    refreshIcons(); renderEdges(); selectEl(el,'block'); scheduleFlowSave(); recordHistory();
   }
   document.getElementById('fb-add-menu').querySelectorAll('button[data-fb]').forEach(b=> b.addEventListener('click', ()=>{ addFlowBlock(b.dataset.fb); document.getElementById('fb-add-menu').classList.remove('show'); }));
   document.addEventListener('mousedown', e=>{ const m=document.getElementById('fb-add-menu'); if(m.classList.contains('show') && !m.contains(e.target) && !(e.target.closest && e.target.closest('[onclick^="openFbAddMenu"]'))) m.classList.remove('show'); });
 
-  // ---- keyboard -------------------------------------------------------------
+  // ---- clipboard (internal: copy/cut/paste/duplicate of blocks & connectors) --
+  let flowClipboard = null;
+  function copySelection(){
+    if(selected.type==='block'){
+      const c=selected.ref.cloneNode(true);
+      c.querySelectorAll('.fb-anchor,.fb-resize').forEach(n=>n.remove());
+      c.classList.remove('selected');
+      flowClipboard={ kind:'block', html:c.outerHTML };
+    } else if(selected.type==='edge'){
+      flowClipboard={ kind:'edge', rec:JSON.parse(JSON.stringify(selected.ref)) };
+    }
+  }
+  function pasteClipboard(){
+    if(!flowClipboard) return;
+    if(flowClipboard.kind==='block'){
+      const el=makeEl(flowClipboard.html);
+      el.dataset.id=nextId('b');
+      el.style.left=((parseFloat(el.style.left)||0)+24)+'px';
+      el.style.top =((parseFloat(el.style.top)||0)+24)+'px';
+      flowBlocks.appendChild(el); ensureBlockChrome(el); activate(el); refreshIcons();
+      selectEl(el,'block');
+    } else if(flowClipboard.kind==='edge'){
+      const rec=Object.assign(JSON.parse(JSON.stringify(flowClipboard.rec)), { id:nextId('e') });
+      if(rec.from && rec.from.x!=null) rec.from={ x:rec.from.x+24, y:rec.from.y+24 };  // offset free ends so the copy is visible
+      if(rec.to   && rec.to.x  !=null) rec.to  ={ x:rec.to.x+24,   y:rec.to.y+24 };
+      connectors.push(rec); renderEdges(); selectEl(rec,'edge');
+    }
+    scheduleFlowSave(); recordHistory();
+  }
+  function cutSelection(){
+    if(!selected.type) return;
+    copySelection();
+    if(selected.type==='edge') removeEdge(selected.ref);
+    else { removeBlock(selected.ref,'已剪切'); selectEl(null); }
+    recordHistory();
+  }
+
+  // ---- undo / redo (snapshot history of the whole flow) ----------------------
+  let flowHistory=[], flowHistIndex=-1, historyFrozen=false;
+  function recordHistory(){
+    if(historyFrozen) return;
+    const snap=JSON.stringify(serializeFlow());
+    if(flowHistory[flowHistIndex]===snap) return;
+    flowHistory=flowHistory.slice(0, flowHistIndex+1);
+    flowHistory.push(snap);
+    if(flowHistory.length>60) flowHistory.shift();
+    flowHistIndex=flowHistory.length-1;
+  }
+  function restoreSnapshot(snap){
+    historyFrozen=true;
+    const data=JSON.parse(snap);
+    flowBlocks.innerHTML=safeBoardHtml(data.blocksHtml);
+    connectors=Array.isArray(data.connectors)?data.connectors.map(c=>({...c})):[];
+    applyColors(data.colors);
+    selected={type:null,ref:null};
+    initFlow();
+    flowSaveState();
+    historyFrozen=false;
+  }
+  function flowUndo(){ if(currentView()!=='flow') return; if(flowHistIndex<=0){ showToast('没有可撤销的操作'); return; } flowHistIndex--; restoreSnapshot(flowHistory[flowHistIndex]); showToast('已撤销'); }
+  function flowRedo(){ if(currentView()!=='flow') return; if(flowHistIndex>=flowHistory.length-1){ showToast('没有可重做的操作'); return; } flowHistIndex++; restoreSnapshot(flowHistory[flowHistIndex]); showToast('已重做'); }
+
+  // ---- keyboard shortcuts ----------------------------------------------------
   window.addEventListener('keydown', e=>{
     if(currentView()!=='flow') return;
+    const editing = document.activeElement && document.activeElement.isContentEditable;
+    const mod = e.ctrlKey || e.metaKey;
+    if(mod && !editing){                                  // object-level ops only when not editing text
+      const k=e.key.toLowerCase();
+      if(k==='c'){ if(selected.type){ copySelection(); e.preventDefault(); } return; }
+      if(k==='x'){ if(selected.type){ cutSelection(); e.preventDefault(); } return; }
+      if(k==='v'){ if(flowClipboard){ pasteClipboard(); e.preventDefault(); } return; }
+      if(k==='d'){ if(selected.type){ copySelection(); pasteClipboard(); } e.preventDefault(); return; }
+      if(k==='z'){ e.preventDefault(); if(e.shiftKey) flowRedo(); else flowUndo(); return; }
+      if(k==='y'){ e.preventDefault(); flowRedo(); return; }
+    }
+    if(editing) return;                                   // let the browser handle text-editing keys
     if(e.key==='Escape'){ selectEl(null); return; }
     if(e.key==='Delete'){
-      if(document.activeElement && document.activeElement.isContentEditable) return;
       if(selected.type==='edge') removeEdge(selected.ref);
-      else if(selected.type==='block'){ removeBlock(selected.ref,'已删除组块'); selectEl(null); }
+      else if(selected.type==='block'){ removeBlock(selected.ref,'已删除组块'); selectEl(null); recordHistory(); }
     }
   });
 
@@ -1862,7 +1967,7 @@
     return { view:'flow', blocksHtml: clone.innerHTML, connectors: connectors.map(c=>JSON.parse(JSON.stringify(c))), colors: currentColors() };
   }
   function flowSaveState(){ try{ localStorage.setItem(FLOW_LS_KEY, JSON.stringify({ v:1, ...serializeFlow() })); showSaved(); }catch(e){} }
-  function scheduleFlowSave(){ if(!flowReady) return; clearTimeout(flowSaveTimer); flowSaveTimer=setTimeout(flowSaveState,600); }
+  function scheduleFlowSave(){ if(!flowReady) return; clearTimeout(flowSaveTimer); flowSaveTimer=setTimeout(()=>{ flowSaveState(); recordHistory(); },600); }
   function flowRestore(){
     let data; try{ data=JSON.parse(localStorage.getItem(FLOW_LS_KEY)||'null'); }catch(e){ return false; }
     if(!data || typeof data.blocksHtml!=='string') return false;
