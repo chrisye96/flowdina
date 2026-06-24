@@ -1402,13 +1402,19 @@
   // ---------------- JSON export / import (Phase 0: portability) ----------------
   // Same {html, colors} shape as the autosave, just to/from a file. Round-trips
   // exactly because it reuses the same serialization.
+  // Distinct file name per view/document so each chart exports separately.
+  function exportBaseName(){
+    if(currentView() === 'step') return 'franchisee-journey';
+    if(typeof flowDoc !== 'undefined' && flowDoc === 'admin-dash') return 'admin-console';
+    if(typeof flowDoc !== 'undefined' && flowDoc === 'admin-flow') return 'admin-oversight-flow';
+    return 'franchisor-flowchart';
+  }
   function exportJSON(){
-    const flow = currentView() === 'flow';
     const data = shareDoc();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = flow ? 'flowchart.json' : 'franchisee-journey.json';
+    a.download = exportBaseName() + '.json';
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1481,7 +1487,7 @@
     status.textContent = '导出中…';
     try{
       const canvas = await snapshot();
-      const base = currentView() === 'flow' ? 'flowchart' : 'franchisee-journey';
+      const base = exportBaseName();
       if(kind === 'png'){
         const a = document.createElement('a');
         a.download = base + '.png';
