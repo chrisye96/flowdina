@@ -403,6 +403,29 @@
   .fb-decision{border:2px solid #7c3aed; background:#faf5ff;}
   .fb-note{border:none; background:transparent; box-shadow:none; text-align:center; font-weight:600; color:#6b7280;}
 
+  /* admin console (dashboard mockup) helpers — used inside .fb blocks */
+  .adm-table{width:100%; border-collapse:collapse; font-size:11px;}
+  .adm-table th{text-align:left; color:#6b7280; font-weight:700; padding:5px 8px; border-bottom:1px solid #e5e7eb; white-space:nowrap;}
+  .adm-table td{padding:5px 8px; border-bottom:1px solid #f1f5f9; vertical-align:middle;}
+  .adm-table tr:last-child td{border-bottom:none;}
+  .adm-badge{display:inline-block; padding:1px 8px; border-radius:999px; font-size:10px; font-weight:700; white-space:nowrap;}
+  .adm-badge.b-review{background:#dbeafe; color:#1d4ed8;}
+  .adm-badge.b-cool{background:#ede9fe; color:#6d28d9;}
+  .adm-badge.b-fin{background:#fef3c7; color:#b45309;}
+  .adm-badge.b-approved{background:#dcfce7; color:#15803d;}
+  .adm-badge.b-declined{background:#fee2e2; color:#b91c1c;}
+  .adm-badge.b-withdrawn{background:#f3f4f6; color:#374151;}
+  .adm-feed{list-style:none; margin:0; padding:0;}
+  .adm-feed li{padding:7px 0; border-bottom:1px solid #f1f5f9; display:flex; gap:8px; align-items:flex-start;}
+  .adm-feed li:last-child{border-bottom:none;}
+  .adm-feed .ic{flex:none; width:24px; height:24px; border-radius:7px; display:flex; align-items:center; justify-content:center;}
+  .adm-feed .ic svg{width:14px; height:14px; color:#fff;}
+  .adm-feed .t{color:#9ca3af; font-size:10px; white-space:nowrap; margin-left:auto;}
+  .adm-stats{display:flex; gap:10px; flex-wrap:wrap;}
+  .adm-stat{flex:1 1 84px; background:#f8fafc; border:1px solid #eef0f3; border-radius:8px; padding:8px 10px; text-align:center;}
+  .adm-stat .n{font-size:19px; font-weight:800; color:#111827; line-height:1.1;}
+  .adm-stat .l{font-size:9.5px; color:#6b7280; margin-top:2px;}
+
   /* contextual property sidebar */
   .flow-sidebar{width:290px; flex:none; background:#fff; border-left:1px solid #e5e7eb; padding:16px; overflow-y:auto;}
   body.exporting .flow-sidebar{display:none;}
@@ -433,10 +456,16 @@
 
   <!-- ================= TOOLBAR (excluded from export) ================= -->
   <div class="toolbar">
-    <!-- view switch -->
+    <!-- view switch (role) -->
     <div class="seg" id="view-seg">
-      <button id="seg-flow" class="active" onclick="setView('flow')"><i data-lucide="git-fork"></i>流程图</button>
-      <button id="seg-step" onclick="setView('step')"><i data-lucide="columns-3"></i>步骤图</button>
+      <button id="seg-flow" class="active" onclick="setView('flow')" title="Franchisor 流程图"><i data-lucide="git-fork"></i>流程图</button>
+      <button id="seg-step" onclick="setView('step')" title="Franchisee 步骤图"><i data-lucide="columns-3"></i>步骤图</button>
+      <button id="seg-admin" onclick="setView('admin')" title="Admin 视图"><i data-lucide="shield-check"></i>Admin</button>
+    </div>
+    <!-- admin sub-toggle (visible only in Admin view) -->
+    <div class="seg" id="admin-seg" hidden>
+      <button id="aseg-dash" class="active" onclick="setAdminChart('dash')"><i data-lucide="layout-dashboard"></i>控制台</button>
+      <button id="aseg-flow" onclick="setAdminChart('flow')"><i data-lucide="git-fork"></i>监管流程</button>
     </div>
     <span class="tb-sep"></span>
 
@@ -1242,16 +1271,17 @@
   }
   function resetTemplate(){
     if(currentView() === 'flow'){
-      if(!confirm('确定要清除流程图的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
-      try{ localStorage.removeItem(FLOW_LS_KEY); }catch(e){}
+      if(!confirm('确定要清除当前图表的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
+      try{ localStorage.removeItem(flowKey()); }catch(e){}
       flowReady = false;
       connectors = [];
       flowBlocks.innerHTML = '';
-      buildFlowTemplate();
+      buildFlowDoc(flowDoc);                 // rebuild whichever doc is active (Franchisor / Admin)
       initFlow();
       flowFit();
+      flowHistory = []; flowHistIndex = -1;
       flowReady = true;
-      flowSaveState();
+      flowSaveState(); recordHistory();
       return;
     }
     if(!confirm('确定要清除步骤图的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
@@ -1355,7 +1385,12 @@
     });
 
     // Default view: a shared link forces its own view; otherwise last-used, else flow.
-    setView(hashView || localStorage.getItem('active-view') || 'flow');
+    try{ const ac = localStorage.getItem('admin-chart'); if(ac==='dash'||ac==='flow') adminChart = ac; }catch(e){}
+    document.getElementById('aseg-dash').classList.toggle('active', adminChart === 'dash');
+    document.getElementById('aseg-flow').classList.toggle('active', adminChart === 'flow');
+    let startView = hashView || localStorage.getItem('active-view') || 'flow';
+    if(!['flow','step','admin'].includes(startView)) startView = 'flow';
+    setView(startView);
 
     // Opened from a shared link: persist locally and clean the URL.
     if(hashView){
@@ -1477,7 +1512,13 @@
   const flowEdges   = document.getElementById('flow-edges');
   const flowLabels  = document.getElementById('flow-labels');
   const flowSidebar = document.getElementById('flow-sidebar');
-  const FLOW_LS_KEY = 'flowchart-state-v1';
+
+  // The one flow canvas hosts several swappable documents (Franchisor flow + the
+  // two Admin charts). Each persists under its own key; only one is loaded at a time.
+  const FLOW_DOC_KEY = { franchisor:'flowchart-state-v1', 'admin-dash':'admin-dash-state-v1', 'admin-flow':'admin-flow-state-v1' };
+  let flowDoc   = 'franchisor';               // which document is currently in the canvas
+  let adminChart= 'dash';                     // which Admin chart the Admin view shows
+  function flowKey(){ return FLOW_DOC_KEY[flowDoc] || FLOW_DOC_KEY.franchisor; }
 
   let connectors  = [];                       // edge records (the source of truth for the SVG layer)
   let selected    = { type:null, ref:null };  // 'block' (DOM el) | 'edge' (record) | null
@@ -1491,19 +1532,51 @@
   function cssEsc(s){ return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/[^a-zA-Z0-9_-]/g,'\\$&'); }
 
   // ---- view switching -------------------------------------------------------
+  // currentView stays 'flow' | 'step' (the Admin charts live on the flow canvas,
+  // so export/share/json treat them like flow content). topView tracks the role.
   function currentView(){ return document.getElementById('flow-view').hidden ? 'step' : 'flow'; }
-  function setView(v){
-    document.getElementById('flow-view').hidden = (v !== 'flow');
-    document.getElementById('step-view').hidden = (v !== 'step');
+  function setView(v){                                   // v: 'flow'(Franchisor) | 'step'(Franchisee) | 'admin'
+    const onFlowCanvas = (v !== 'step');
+    document.getElementById('flow-view').hidden = !onFlowCanvas;
+    document.getElementById('step-view').hidden =  onFlowCanvas;
     document.getElementById('seg-flow').classList.toggle('active', v === 'flow');
     document.getElementById('seg-step').classList.toggle('active', v === 'step');
-    document.querySelectorAll('.tb-flow').forEach(g => g.hidden = (v !== 'flow'));
-    document.querySelectorAll('.tb-step').forEach(g => g.hidden = (v !== 'step'));
-    document.getElementById('hint').textContent = v === 'flow'
+    document.getElementById('seg-admin').classList.toggle('active', v === 'admin');
+    document.getElementById('admin-seg').hidden = (v !== 'admin');
+    document.querySelectorAll('.tb-flow').forEach(g => g.hidden = !onFlowCanvas);
+    document.querySelectorAll('.tb-step').forEach(g => g.hidden =  onFlowCanvas);
+    document.getElementById('hint').textContent = onFlowCanvas
       ? '拖蓝点连线 · 拖橙色方块调折线拐角 · 复制/剪切/粘贴/再制 Ctrl+C/X/V/D · 撤销/重做 Ctrl+Z / Ctrl+Shift+Z · 双击连线加文字 · 滚轮缩放 · 拖空白平移'
       : '点击文字直接编辑 · 选中文字可加粗/改色 · 悬停出现 ＋（加内容）和 ×（删除）· 改动自动保存';
     try{ localStorage.setItem('active-view', v); }catch(e){}
-    if(v === 'flow'){ applyTransform(); renderEdges(); }
+    if(v === 'flow')  ensureFlowDoc('franchisor');
+    if(v === 'admin') ensureFlowDoc(adminChart === 'dash' ? 'admin-dash' : 'admin-flow');
+    if(onFlowCanvas){ applyTransform(); renderEdges(); }
+  }
+  function setAdminChart(which){                         // which: 'dash' | 'flow'
+    adminChart = which;
+    document.getElementById('aseg-dash').classList.toggle('active', which === 'dash');
+    document.getElementById('aseg-flow').classList.toggle('active', which === 'flow');
+    try{ localStorage.setItem('admin-chart', which); }catch(e){}
+    ensureFlowDoc(which === 'dash' ? 'admin-dash' : 'admin-flow');
+  }
+  // Load a document into the flow canvas only if it isn't already the active one.
+  function ensureFlowDoc(docId){ if(flowDoc !== docId) loadFlowDoc(docId); }
+  function loadFlowDoc(docId){
+    if(flowReady) flowSaveState();                       // persist the doc we're leaving (uses old flowKey)
+    flowDoc = docId;
+    flowReady = false;
+    selected = { type:null, ref:null };
+    connectors = []; flowBlocks.innerHTML = '';
+    if(!flowRestore()){ buildFlowDoc(docId); initFlow(); }
+    flowFit();
+    flowHistory = []; flowHistIndex = -1;                // history is per-document
+    flowReady = true; recordHistory();
+  }
+  function buildFlowDoc(docId){
+    if(docId === 'admin-dash') buildAdminDashTemplate();
+    else if(docId === 'admin-flow') buildAdminFlowTemplate();
+    else buildFlowTemplate();
   }
 
   // ---- canvas transform / pan / zoom ----------------------------------------
@@ -1986,10 +2059,10 @@
     clone.querySelectorAll('.fb.selected,.rm-active,.rm-armed').forEach(n=>n.classList.remove('selected','rm-active','rm-armed'));
     return { view:'flow', blocksHtml: clone.innerHTML, connectors: connectors.map(c=>JSON.parse(JSON.stringify(c))), colors: currentColors() };
   }
-  function flowSaveState(){ try{ localStorage.setItem(FLOW_LS_KEY, JSON.stringify({ v:1, ...serializeFlow() })); showSaved(); }catch(e){} }
+  function flowSaveState(){ try{ localStorage.setItem(flowKey(), JSON.stringify({ v:1, ...serializeFlow() })); showSaved(); }catch(e){} }
   function scheduleFlowSave(){ if(!flowReady) return; clearTimeout(flowSaveTimer); flowSaveTimer=setTimeout(()=>{ flowSaveState(); recordHistory(); },600); }
   function flowRestore(){
-    let data; try{ data=JSON.parse(localStorage.getItem(FLOW_LS_KEY)||'null'); }catch(e){ return false; }
+    let data; try{ data=JSON.parse(localStorage.getItem(flowKey())||'null'); }catch(e){ return false; }
     if(!data || typeof data.blocksHtml!=='string') return false;
     flowBlocks.innerHTML = safeBoardHtml(data.blocksHtml);
     connectors = Array.isArray(data.connectors) ? data.connectors : [];
@@ -2090,6 +2163,102 @@
     E('b-done','bottom','b-post','left');
     E('b-step3','bottom','b-post','top');
     E('b-step4','bottom','b-end','top');
+  }
+
+  // ---- ADMIN CHART 1: oversight console (dashboard mockup) -------------------
+  // Admin is the cross-case monitor / system-of-record. This aggregates statuses
+  // from BOTH journeys and surfaces the two events where Admin is in the loop
+  // (auto-decline, withdrawal). Sample rows/counts are illustrative.
+  function admStat(n,l){ return '<div class="adm-stat"><div class="n ce">'+n+'</div><div class="l ce">'+l+'</div></div>'; }
+  function admRow(app,fr,stage,badge,status,upd){
+    return '<tr><td class="ce"><b>'+app+'</b></td><td class="ce">'+fr+'</td><td class="ce">'+stage+'</td>'
+         + '<td><span class="adm-badge '+badge+' ce">'+status+'</span></td>'
+         + '<td class="ce" style="color:#9ca3af">'+upd+'</td></tr>';
+  }
+  function admFeed(icon,color,html,t){ return '<li><span class="ic" style="background:'+color+'"><i data-lucide="'+icon+'"></i></span><span class="ce">'+html+'</span><span class="t ce">'+t+'</span></li>'; }
+  function buildAdminDashTemplate(){
+    connectors = [];
+    mkBlock({ id:'a-title', type:'step', x:80, y:40, w:900, head:'ADMIN CONSOLE — Application Oversight &amp; System of Record', headBg:'#111827',
+      body:'<div class="ce" style="color:#6b7280">Read-only oversight across all applications · receives system-record notifications · maintains the audit trail</div>' });
+
+    mkBlock({ id:'a-stats', type:'step', x:80, y:150, w:900, head:'PIPELINE STATUS (all applications)', headBg:'#475569',
+      body:'<div class="adm-stats">'
+        + admStat('6','Under Review') + admStat('4','Cool Down') + admStat('3','Awaiting Financial')
+        + admStat('11','Approved') + admStat('5','Declined') + admStat('2','Withdrawn') + '</div>' });
+
+    mkBlock({ id:'a-table', type:'step', x:80, y:300, w:560, head:'ALL APPLICATIONS', headBg:'#475569',
+      body:'<table class="adm-table"><thead><tr><th>App</th><th>Franchisee</th><th>Stage</th><th>Status</th><th>Updated</th></tr></thead><tbody>'
+        + admRow('#1042','A. Lee','Step 1 · Under Review','b-review','Under Review','2h ago')
+        + admRow('#1041','R. Diaz','Cool Down (15-day)','b-cool','In Progress','5h ago')
+        + admRow('#1039','M. Singh','Step 2 · Financial Check','b-fin','Awaiting Submission','1d ago')
+        + admRow('#1037','T. Brooks','Post-Approval','b-approved','Approved','1d ago')
+        + admRow('#1035','K. Wong','Decision Point','b-declined','Auto-Declined','2d ago')
+        + admRow('#1033','S. Ahmed','Step 2 · Financial Check','b-declined','Declined (no submission)','3d ago')
+        + admRow('#1031','J. Park','Post-Approval','b-withdrawn','Withdrawn','4d ago')
+        + '</tbody></table>' });
+
+    mkBlock({ id:'a-feed', type:'step', x:665, y:300, w:315, head:'NOTIFICATIONS · SYSTEM RECORD', headBg:'#475569',
+      body:'<ul class="adm-feed">'
+        + admFeed('alert-triangle','#dc2626','<b>#1035 AUTO-DECLINED</b> — no action taken after 7-day review period. Admin notified by email.','2d')
+        + admFeed('shield','#374151','<b>#1031 WITHDRAWN</b> — system record. Franchisee, Franchisor (confirmation), Admin &amp; Partner notified simultaneously.','4d')
+        + admFeed('mail','#2563eb','<b>#1033 financial decline</b> — no submission within 5 business days; record updated.','3d')
+        + '</ul>' });
+
+    mkBlock({ id:'a-actions', type:'step', x:665, y:560, w:315, head:'OVERSIGHT ACTIONS', headBg:'#475569',
+      body:'<div class="btn btn-outline"><i data-lucide="list"></i><span class="ce">View All Applications</span></div>'
+        + '<div class="btn btn-outline"><i data-lucide="history"></i><span class="ce">Audit Log / System Records</span></div>'
+        + '<div class="btn btn-outline"><i data-lucide="download"></i><span class="ce">Export Records</span></div>'
+        + '<div class="btn btn-outline"><i data-lucide="shield-alert"></i><span class="ce">Intervene / Override</span></div>' });
+  }
+
+  // ---- ADMIN CHART 2: oversight flowchart (admin's vantage) ------------------
+  function buildAdminFlowTemplate(){
+    connectors = [];
+    mkBlock({ id:'a2-start', type:'terminal', x:430, y:30, w:300, icon:'shield-check', body:'Admin monitors all applications', bg:'#2563eb', color:'#ffffff' });
+    mkBlock({ id:'a2-pipeline', type:'status', x:380, y:140, w:400, bg:'#ffffff', borderColor:'#cbd5e1',
+      body: fbActions('activity','Application pipeline runs')
+        + '<div class="ce" style="margin-top:3px">Franchisee journey + Franchisor review proceed. Admin observes every status in real time (read-only).</div>' });
+    mkBlock({ id:'a2-decision', type:'decision', x:380, y:300, w:400,
+      body:'<div class="fb-row" style="justify-content:center"><i data-lucide="shield" style="color:#6d28d9"></i><span class="fb-strong ce" style="color:#6d28d9">ADMIN INVOLVEMENT POINTS</span></div>'
+        + '<div class="ce" style="text-align:center;color:#7c3aed;margin-top:2px">Admin = system of record. It is notified / records at these events:</div>' });
+
+    // branch — events
+    mkBlock({ id:'a2-autodecl', type:'step', x:40, y:520, w:330, head:'EVENT · AUTO-DECLINE', headBg:'#d97706', bg:'#fffbeb',
+      body: fbList(['7-day review period passes with <b>NO action</b>','Application is <b>AUTO-DECLINED</b>']) });
+    mkBlock({ id:'a2-withdraw', type:'step', x:415, y:520, w:330, head:'EVENT · WITHDRAWAL', headBg:'#dc2626', bg:'#fff5f5',
+      body: fbList(['<b>"Withdraw Application"</b> clicked — available <b>ANY time</b> post-approval','Application is <b>WITHDRAWN</b>']) });
+    mkBlock({ id:'a2-other', type:'step', x:790, y:520, w:320, head:'OTHER OUTCOMES', headBg:'#475569',
+      body: fbList(['Approved (Step 3)','Declined (Step 4) → Process Ends','Financial decline (no submission in 5 days)']) });
+
+    // branch — what Admin gets
+    mkBlock({ id:'a2-adminA', type:'status', x:40, y:730, w:330, bg:'#eff6ff', borderColor:'#93c5fd',
+      body:'<div class="fb-row"><i data-lucide="mail"></i><span class="fb-strong ce">Admin notified (email)</span></div>'
+        + '<div class="ce" style="margin-top:3px"><b>"application declined due to no action taken"</b></div>' });
+    mkBlock({ id:'a2-adminB', type:'status', x:415, y:730, w:330, bg:'#f3f4f6', borderColor:'#d1d5db',
+      body:'<div class="fb-row"><i data-lucide="shield"></i><span class="fb-strong ce">Admin — system record (email)</span></div>'
+        + fbSub('users','Sent simultaneously: <b>Franchisee</b> · <b>Franchisor</b> (confirmation) · <b>Admin</b> · <b>Partner</b>','background:#ffffff;border-color:#e5e7eb') });
+    mkBlock({ id:'a2-otherRec', type:'status', x:790, y:730, w:320, bg:'#ffffff', borderColor:'#cbd5e1',
+      body:'<div class="fb-row"><i data-lucide="eye"></i><span class="fb-strong ce">Visible to Admin</span></div>'
+        + '<div class="ce" style="margin-top:3px">Status change observed; record updated. <span class="fb-muted">(No direct admin email specified in source.)</span></div>' });
+
+    mkBlock({ id:'a2-record', type:'status', x:380, y:960, w:400, bg:'#f0fdf4', borderColor:'#86efac',
+      body:'<div class="fb-row"><i data-lucide="archive"></i><span class="fb-strong ce">System of record updated</span></div>'
+        + '<div class="ce" style="margin-top:3px">Audit trail maintained across all applications.</div>' });
+    mkBlock({ id:'a2-end', type:'terminal', x:445, y:1110, w:270, icon:'check-circle', body:'Oversight complete · audit trail maintained', bg:'#16a34a', color:'#ffffff' });
+
+    const E=(a,fa,b,ta)=>connectors.push(mkEdge({from:{block:a,anchor:fa},to:{block:b,anchor:ta}}));
+    E('a2-start','bottom','a2-pipeline','top');
+    E('a2-pipeline','bottom','a2-decision','top');
+    E('a2-decision','left','a2-autodecl','top');
+    E('a2-decision','bottom','a2-withdraw','top');
+    E('a2-decision','right','a2-other','top');
+    E('a2-autodecl','bottom','a2-adminA','top');
+    E('a2-withdraw','bottom','a2-adminB','top');
+    E('a2-other','bottom','a2-otherRec','top');
+    E('a2-adminA','bottom','a2-record','left');
+    E('a2-adminB','bottom','a2-record','top');
+    E('a2-otherRec','bottom','a2-record','right');
+    E('a2-record','bottom','a2-end','top');
   }
 
   boot();   // wire both views, restore/seed, pick the default view
