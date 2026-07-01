@@ -1,0 +1,114 @@
+.board { position: relative; width: 1380px; max-width: 100%; background: var(--page-bg); padding: 22px; border-radius: 14px; color: var(--title-color); }
+.flowMode { width: 1020px; }
+
+.banner { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, var(--banner-from), var(--banner-to)); border-radius: 12px; padding: 16px 22px; margin-bottom: 16px; color: var(--banner-text); }
+.bannerLeft { display: flex; gap: 11px; align-items: center; }
+.bannerTitle { font-size: 21px; font-weight: 800; color: var(--banner-text); letter-spacing: .2px; }
+.badge { display: flex; gap: 8px; align-items: center; background: var(--badge-bg); color: var(--badge-text); padding: 9px 15px; border-radius: 9px; font-size: 13.5px; font-weight: 600; }
+
+.columns { display: flex; gap: 12px; align-items: flex-start; }
+.col { flex: 1 1 0; min-width: 0; }
+.colHead { border-radius: 10px; padding: 12px 13px; margin-bottom: 12px; }
+.colHeadTop { display: flex; gap: 8px; align-items: center; }
+.num { flex: none; min-width: 19px; height: 19px; line-height: 19px; padding: 0 5px; background: rgba(255,255,255,.25); color: var(--col-text); border-radius: 5px; font-size: 11.5px; font-weight: 700; text-align: center; }
+.colTitle { font-size: 13.5px; font-weight: 700; color: var(--col-text); line-height: 1.2; }
+.colSub { font-size: 11px; color: var(--col-text); opacity: .85; margin-top: 3px; }
+
+.card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 12px; position: relative; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+.cardDanger { background: var(--danger-card-bg); border-color: #fecaca; }
+.cardHeader { margin: -14px -14px 12px; padding: 10px 14px; border-radius: 11px 11px 0 0; color: #fff; font-weight: 700; font-size: 12.5px; text-align: center; letter-spacing: .03em; }
+.tag { position: absolute; top: -9px; right: 11px; background: var(--tag-bg); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .04em; padding: 3px 7px; border-radius: 6px; }
+
+.titleRow { display: flex; gap: 9px; align-items: flex-start; }
+.icon { flex: none; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; }
+.cardTitle { font-size: 13px; font-weight: 700; color: var(--title-color); line-height: 1.25; }
+
+.text { font-size: 11.5px; color: var(--body-color); line-height: 1.5; margin: 9px 0; }
+.textMuted { color: var(--label-color); }
+.textCenter { text-align: center; }
+.accentPrefix { color: var(--accent); font-weight: 700; }
+
+.list { margin: 9px 0; padding-left: 20px; font-size: 11.5px; color: var(--body-color); line-height: 1.5; }
+.list li { margin: 3px 0; }
+
+.field { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; margin: 5px 0; }
+.fLabel { color: var(--label-color); flex: none; }
+.fValue { color: var(--value-color); font-weight: 700; text-align: right; }
+.fValueNormal { font-weight: 500; color: var(--body-color); }
+
+.btn { margin-top: 9px; padding: 9px 11px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.btnPrimary { background: var(--btn-primary); color: var(--btn-primary-text); }
+.btnOutline { background: #fff; border: 1px solid var(--btn-outline-border); color: var(--btn-outline-text); }
+.btnDanger { background: var(--btn-danger); color: var(--btn-danger-text); }
+.btnSpace { justify-content: space-between; }
+
+.note { background: var(--note-bg); border: 1px solid #eef0f3; border-radius: 8px; padding: 9px 10px; margin-top: 9px; }
+.warn { background: var(--warn-bg); border: 1px solid #fde68a; border-radius: 8px; padding: 9px 10px; margin-top: 9px; }
+.calloutHead { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; font-size: 9.5px; font-weight: 700; letter-spacing: .07em; color: #9ca3af; }
+.warnHead { color: var(--warn-text); font-size: 11.5px; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px; border-radius: 7px; background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 600; }
+
+.band { margin: 10px -14px -14px; padding: 9px 14px; border-radius: 0 0 11px 11px; background: #fefce8; font-size: 11.5px; font-weight: 600; color: #854d0e; }
+
+/* z-index lifts the caption above the (z-index:0) edge layer so its opaque
+   background masks any connector line crossing it (label-on-wire). */
+.caption { text-align: center; font-size: 12px; font-weight: 600; color: var(--body-color); position: relative; z-index: 1; background: var(--page-bg); padding: 5px 16px; border-radius: 6px; }
+/* Drag handle to reposition a caption; only on hover, so it stays out of exports. */
+.capHandle { position: absolute; left: -7px; top: 50%; transform: translateY(-50%); display: none; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--label-color); cursor: move; box-shadow: 0 1px 3px rgba(16,24,40,.16); }
+.caption:hover .capHandle { display: inline-flex; }
+
+.flowCol { display: flex; flex-direction: column; align-items: center; gap: 52px; max-width: 980px; margin: 0 auto; }
+.flowCol .card { width: 100%; margin-bottom: 0; overflow: hidden; }
+.flowCol .columns { width: 100%; align-items: flex-start; }
+.flowCol .col { display: flex; flex-direction: column; align-items: center; gap: 52px; }
+
+.pill { position: relative; align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 999px; color: #fff; font-weight: 700; font-size: 14px; }
+.pill svg { color: #fff; }
+
+.cardDecision { border: 2px solid #a855f7; background: #faf5ff; }
+.cardStateBlue { border: 2px solid #3b82f6; }
+.cardStateGreen { border: 2px solid #16a34a; background: #f0fdf4; }
+
+/* Connect mode: every block is a click target; text editing is suspended so the
+   click registers the node instead of focusing a caret. */
+.connect [data-node-id] { cursor: crosshair; }
+.connect [data-node-id]:hover { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.connect [contenteditable] { pointer-events: none; }
+.connectSource { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Selected node (target of copy / cut / duplicate / delete). */
+.nodeSelected { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+/* Corner resize handle on a selected card. */
+.resizeHandle { position: absolute; right: 1px; bottom: 1px; width: 15px; height: 15px; cursor: nwse-resize; z-index: 5; }
+.resizeHandle::after { content: ""; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); border-radius: 0 0 3px 0; }
+
+/* Per-edge styling toolbar (floats above the selected connector). */
+.edgeBar { display: flex; gap: 4px; align-items: center; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px 6px; box-shadow: 0 4px 14px rgba(16,24,40,.14); font-size: 12px; white-space: nowrap; font-family: Arial, Helvetica, sans-serif; }
+.edgeBtn { border: 1px solid #e5e7eb; background: #fff; border-radius: 6px; padding: 3px 7px; font-size: 12px; color: #374151; cursor: pointer; line-height: 1.1; }
+.edgeBtn:hover { background: #f9fafb; }
+.edgeOn { background: #eef0fb; border-color: #c7c2f0; color: #534ab7; font-weight: 600; }
+.edgeInput { width: 92px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 3px 6px; font-size: 12px; color: #374151; }
+.edgeSep { width: 1px; align-self: stretch; background: #e5e7eb; margin: 0 2px; }
+.edgeDel { border: none; background: transparent; color: #dc2626; cursor: pointer; padding: 3px 6px; font-size: 12px; font-weight: 600; }
+
+/* Per-block delete (×) revealed on hovering the block; add-content menu under a card. */
+.blockRow { position: relative; }
+.blockDel { position: absolute; top: 1px; right: 1px; z-index: 3; width: 16px; height: 16px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 12px; line-height: 1; cursor: pointer; display: none; align-items: center; justify-content: center; padding: 0; box-shadow: 0 1px 2px rgba(16,24,40,.14); }
+.blockRow:hover > .blockDel { display: flex; }
+.blockDel:hover { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+.connect .blockDel { display: none; }
+.addBlockWrap { position: relative; margin-top: 9px; }
+.addBlock { display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 6px; border: 1px dashed var(--card-border); border-radius: 8px; background: transparent; color: var(--label-color); font-size: 11.5px; cursor: pointer; }
+.addBlock:hover { background: var(--note-bg); color: var(--body-color); }
+.addMenu { z-index: 60; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 12px 30px rgba(16,24,40,.2); padding: 5px; }
+.addMenu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 9px; border: none; background: transparent; border-radius: 7px; font-size: 12.5px; color: #374151; cursor: pointer; text-align: left; }
+.addMenu button:hover { background: #f3f4f6; }
+.addMenu button svg { color: #6b7280; }
+body.exporting .blockDel, body.exporting .addBlockWrap { display: none !important; }
+
+/* Per-node delete: a corner × revealed on hover; hidden in connect mode (clicks connect). */
+.nodeDel { position: absolute; top: 6px; right: 6px; z-index: 2; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: 13px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s; display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: 0 1px 2px rgba(16,24,40,.12); }
+.card:hover .nodeDel, .pill:hover .nodeDel { opacity: 1; }
+.nodeDel:hover { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+.connect .nodeDel { display: none; }

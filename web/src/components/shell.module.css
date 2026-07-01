@@ -1,0 +1,39 @@
+.app { display: flex; flex-direction: column; height: 100dvh; background: var(--chrome-bg); }
+.body { flex: 1; display: flex; min-height: 0; }
+
+.topbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--chrome-surface); border-bottom: 1px solid var(--chrome-border); position: sticky; top: 0; z-index: 10; }
+.brand { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; color: var(--chrome-text); }
+.logo { width: 18px; height: 18px; border-radius: 5px; background: #534ab7; display: inline-flex; align-items: center; justify-content: center; }
+.docTitle { font-size: 13px; color: var(--chrome-text-muted); min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sep { color: var(--chrome-control); }
+
+.seg { display: inline-flex; border: 1px solid var(--chrome-control); border-radius: 8px; overflow: hidden; margin-left: 4px; }
+.seg button { border: none; background: transparent; font-size: 12.5px; padding: 5px 12px; color: var(--chrome-text-muted); cursor: pointer; }
+.seg button.on { background: var(--chrome-active); color: var(--chrome-text); font-weight: 600; }
+
+.spacer { margin-left: auto; }
+
+.editTools { display: inline-flex; align-items: center; gap: 1px; padding: 0 2px; flex: none; }
+.iconBtn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 7px; background: transparent; color: var(--chrome-text-soft); cursor: pointer; flex: none; }
+.iconBtn:hover:not(:disabled) { background: var(--chrome-hover); }
+.iconBtn:disabled { opacity: .35; cursor: default; }
+.vsep { width: 1px; align-self: stretch; min-height: 18px; background: var(--chrome-border); margin: 0 4px; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 11px; border: 1px solid var(--chrome-control); border-radius: 8px; background: var(--chrome-surface); color: var(--chrome-text-soft); cursor: pointer; font-weight: 500; white-space: nowrap; flex: none; }
+.btn:hover { background: var(--chrome-hover); }
+.primary { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 13px; border: none; border-radius: 8px; background: #534ab7; color: #eeedfe; cursor: pointer; font-weight: 600; white-space: nowrap; flex: none; }
+.primary:hover { background: #463c9e; }
+
+.toggleOn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 11px; border: 1px solid #c7c2f0; border-radius: 8px; background: #eef0fb; color: #534ab7; cursor: pointer; font-weight: 600; white-space: nowrap; flex: none; }
+
+.status { font-size: 12.5px; color: #16a34a; font-weight: 600; }
+
+.canvas { flex: 1; overflow: auto; padding: 24px; display: flex; justify-content: center; align-items: flex-start; }
+
+/* Phones: wrap the toolbar instead of clipping, drop the title, give the canvas more room. */
+@media (max-width: 767px) {
+  .topbar { flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
+  .spacer { display: none; }
+  .docTitle, .sep { display: none; }
+  .canvas { padding: 12px; }
+}
