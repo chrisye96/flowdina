@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -463,51 +463,51 @@
   <div class="toolbar">
     <!-- view switch (role) -->
     <div class="seg" id="view-seg">
-      <button id="seg-flow" class="active" onclick="setView('flow')" title="Franchisor 流程图"><i data-lucide="git-fork"></i>流程图</button>
-      <button id="seg-step" onclick="setView('step')" title="Franchisee 步骤图"><i data-lucide="columns-3"></i>步骤图</button>
-      <button id="seg-admin" onclick="setView('admin')" title="Admin 监管视图"><i data-lucide="shield-check"></i>Admin</button>
+      <button id="seg-flow" class="active" onclick="setView('flow')" title="Franchisor Flowchart"><i data-lucide="git-fork"></i>Flowchart</button>
+      <button id="seg-step" onclick="setView('step')" title="Franchisee Step diagram"><i data-lucide="columns-3"></i>Step diagram</button>
+      <button id="seg-admin" onclick="setView('admin')" title="Admin oversight view"><i data-lucide="shield-check"></i>Admin</button>
     </div>
     <span class="tb-sep"></span>
 
     <!-- flow-only controls -->
     <div class="tb-group tb-flow">
-      <button class="tbtn" onclick="openFbAddMenu(event)" title="新增组块"><i data-lucide="plus-square"></i>组块</button>
-      <button class="tbtn" onclick="addFreeSegment()" title="新增自由线段"><i data-lucide="move-up-right"></i>线段</button>
-      <button class="tbtn" onclick="flowUndo()" title="撤销 (Ctrl+Z)"><i data-lucide="undo-2"></i></button>
-      <button class="tbtn" onclick="flowRedo()" title="重做 (Ctrl+Shift+Z / Ctrl+Y)"><i data-lucide="redo-2"></i></button>
-      <button class="tbtn" onclick="flowZoom(-1)" title="缩小"><i data-lucide="zoom-out"></i></button>
-      <button class="tbtn" onclick="flowFit()" title="适应窗口"><i data-lucide="maximize"></i></button>
-      <button class="tbtn" onclick="flowZoom(1)" title="放大"><i data-lucide="zoom-in"></i></button>
-      <button class="tbtn" id="sidebar-toggle" onclick="toggleSidebar()" title="显示 / 隐藏属性侧栏"><i data-lucide="panel-right"></i></button>
+      <button class="tbtn" onclick="openFbAddMenu(event)" title="Add block"><i data-lucide="plus-square"></i>Block</button>
+      <button class="tbtn" onclick="addFreeSegment()" title="Add free segment"><i data-lucide="move-up-right"></i>Segment</button>
+      <button class="tbtn" onclick="flowUndo()" title="Undo (Ctrl+Z)"><i data-lucide="undo-2"></i></button>
+      <button class="tbtn" onclick="flowRedo()" title="Redo (Ctrl+Shift+Z / Ctrl+Y)"><i data-lucide="redo-2"></i></button>
+      <button class="tbtn" onclick="flowZoom(-1)" title="Zoom out"><i data-lucide="zoom-out"></i></button>
+      <button class="tbtn" onclick="flowFit()" title="Fit to window"><i data-lucide="maximize"></i></button>
+      <button class="tbtn" onclick="flowZoom(1)" title="Zoom in"><i data-lucide="zoom-in"></i></button>
+      <button class="tbtn" id="sidebar-toggle" onclick="toggleSidebar()" title="Show / hide the properties panel"><i data-lucide="panel-right"></i></button>
     </div>
 
     <!-- step-only controls -->
     <div class="tb-group tb-step" hidden>
-      <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>新增阶段</button>
-      <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>颜色设置</button>
+      <button class="tbtn" onclick="addStage()"><i data-lucide="plus"></i>Add stage</button>
+      <button class="tbtn" onclick="toggleSettings(true)"><i data-lucide="palette"></i>Color settings</button>
     </div>
     <span class="tb-sep"></span>
 
     <!-- common -->
     <button class="tbtn primary" onclick="exportImage('png')"><i data-lucide="image"></i>PNG</button>
     <button class="tbtn primary" onclick="exportImage('pdf')"><i data-lucide="file-down"></i>PDF</button>
-    <button class="tbtn" onclick="resetTemplate()" title="恢复当前视图到初始模板"><i data-lucide="rotate-ccw"></i>重置</button>
-    <button class="tbtn" onclick="exportJSON()" title="把当前视图保存为 JSON 文件"><i data-lucide="braces"></i>导出 JSON</button>
-    <button class="tbtn" onclick="document.getElementById('import-json').click()" title="从 JSON 文件载入"><i data-lucide="upload"></i>导入 JSON</button>
+    <button class="tbtn" onclick="resetTemplate()" title="Reset the current view to its template"><i data-lucide="rotate-ccw"></i>Reset</button>
+    <button class="tbtn" onclick="exportJSON()" title="Save the current view as a JSON file"><i data-lucide="braces"></i>Export JSON</button>
+    <button class="tbtn" onclick="document.getElementById('import-json').click()" title="Load from a JSON file"><i data-lucide="upload"></i>Import JSON</button>
     <input type="file" id="import-json" accept="application/json,.json" style="display:none">
-    <button class="tbtn" onclick="copyShareLink()" title="复制包含当前视图的分享链接"><i data-lucide="link"></i>分享</button>
+    <button class="tbtn" onclick="copyShareLink()" title="Copy a share link for the current view"><i data-lucide="link"></i>Share</button>
     <span id="status"></span>
-    <span id="saved" class="saved-ind"><i data-lucide="check"></i>已自动保存</span>
+    <span id="saved" class="saved-ind"><i data-lucide="check"></i>Saved</span>
     <span class="hint" id="hint"></span>
   </div>
 
   <!-- flow block-type menu (reuses .add-menu styling) -->
   <div class="add-menu" id="fb-add-menu">
-    <button data-fb="step"><i data-lucide="square"></i>步骤块</button>
-    <button data-fb="decision"><i data-lucide="diamond"></i>决策块</button>
-    <button data-fb="status"><i data-lucide="info"></i>状态框</button>
-    <button data-fb="terminal"><i data-lucide="circle"></i>起止节点</button>
-    <button data-fb="note"><i data-lucide="type"></i>文字标注</button>
+    <button data-fb="step"><i data-lucide="square"></i>Step</button>
+    <button data-fb="decision"><i data-lucide="diamond"></i>Decision</button>
+    <button data-fb="status"><i data-lucide="info"></i>Status</button>
+    <button data-fb="terminal"><i data-lucide="circle"></i>Terminal</button>
+    <button data-fb="note"><i data-lucide="type"></i>Note</button>
   </div>
 
   <!-- ================= FLOWCHART VIEW (default) ================= -->
@@ -521,7 +521,7 @@
         </div>
       </div>
       <aside class="flow-sidebar" id="flow-sidebar"></aside>
-      <button class="sidebar-handle" id="sidebar-handle" onclick="toggleSidebar()" title="显示 / 隐藏侧栏" aria-label="显示 / 隐藏侧栏"><i data-lucide="chevron-right"></i></button>
+      <button class="sidebar-handle" id="sidebar-handle" onclick="toggleSidebar()" title="Show / hide the sidebar" aria-label="Show / hide the sidebar"><i data-lucide="chevron-right"></i></button>
     </div>
   </div><!-- /#flow-view -->
 
@@ -718,22 +718,22 @@
 
   <!-- ================= INLINE FORMAT TOOLBAR (appears on text selection; excluded from export) ================= -->
   <div class="seltool" id="seltool">
-    <button class="st-btn" id="st-bold" title="加粗 / 取消加粗（也可用 Ctrl/Cmd+B）"><i data-lucide="bold"></i></button>
-    <button class="st-btn" id="st-underline" title="下划线 / 取消（也可用 Ctrl/Cmd+U）"><i data-lucide="underline"></i></button>
+    <button class="st-btn" id="st-bold" title="Bold / unbold (or Ctrl/Cmd+B)"><i data-lucide="bold"></i></button>
+    <button class="st-btn" id="st-underline" title="Underline / remove (or Ctrl/Cmd+U)"><i data-lucide="underline"></i></button>
     <span class="st-sep"></span>
     <span id="st-sw-anchor" style="display:flex; gap:7px; align-items:center;"></span>
     <span class="st-sep"></span>
-    <label class="st-custom" title="自定义文字颜色"><i data-lucide="palette"></i><input type="color" id="st-color" value="#2563eb"></label>
+    <label class="st-custom" title="Custom text color"><i data-lucide="palette"></i><input type="color" id="st-color" value="#2563eb"></label>
   </div>
 
   <!-- Floating "add" button + menu (appears on hovering a card; excluded from export) -->
-  <button class="add-float" id="add-float" type="button" title="向此卡片添加内容"><i data-lucide="plus"></i></button>
+  <button class="add-float" id="add-float" type="button" title="Add content to this card"><i data-lucide="plus"></i></button>
   <div class="add-menu" id="add-menu">
-    <button data-add="note"><i data-lucide="mail"></i>通知框</button>
-    <button data-add="text"><i data-lucide="type"></i>文字</button>
-    <button data-add="field"><i data-lucide="align-left"></i>状态行</button>
-    <button data-add="button"><i data-lucide="square"></i>按钮</button>
-    <button data-add="icon"><i data-lucide="image"></i>图标</button>
+    <button data-add="note"><i data-lucide="mail"></i>Callout</button>
+    <button data-add="text"><i data-lucide="type"></i>Text</button>
+    <button data-add="field"><i data-lucide="align-left"></i>Field</button>
+    <button data-add="button"><i data-lucide="square"></i>Button</button>
+    <button data-add="icon"><i data-lucide="image"></i>Icon</button>
   </div>
   <div class="icon-picker" id="icon-picker">
     <div class="ip-grid" id="ip-grid"></div>
@@ -741,54 +741,54 @@
   </div>
 
   <!-- Floating delete button (appears on hovering a removable block; excluded from export) -->
-  <button class="del-float" id="del-float" type="button" title="删除此项"><i data-lucide="trash-2"></i></button>
+  <button class="del-float" id="del-float" type="button" title="Delete this item"><i data-lucide="trash-2"></i></button>
 
   <!-- Undo toast -->
-  <div class="toast" id="toast"><span id="toast-msg">已删除 1 项</span><button id="toast-undo">撤销</button></div>
+  <div class="toast" id="toast"><span id="toast-msg">Deleted 1 item</span><button id="toast-undo">Undo</button></div>
 
   <!-- ================= COLOR SETTINGS PANEL (excluded from export) ================= -->
   <div class="scrim" id="scrim" onclick="toggleSettings(false)"></div>
   <div class="settings" id="settings">
     <div class="settings-head">
-      <h3>颜色设置</h3>
+      <h3>Color settings</h3>
       <button class="close-x" onclick="toggleSettings(false)"><i data-lucide="x"></i></button>
     </div>
-    <p class="tip">任意改色即时生效。文字内容请直接点击图表上的文字编辑。</p>
+    <p class="tip">Any color change applies instantly. To edit text, click the text in the chart directly.</p>
     <div id="color-list"></div>
-    <button class="reset-btn" onclick="resetColors()">恢复默认颜色</button>
+    <button class="reset-btn" onclick="resetColors()">Reset to default colors</button>
   </div>
 
 <script>
   // ---- Editable colors: [group, label, cssVar, defaultHex] ----
   const COLORS = [
-    ['顶栏','顶栏渐变 · 起始','--banner-from','#1d4ed8'],
-    ['顶栏','顶栏渐变 · 结束','--banner-to','#2563eb'],
-    ['顶栏','顶栏文字','--banner-text','#ffffff'],
-    ['顶栏','徽章底色','--badge-bg','#3b82f6'],
-    ['顶栏','徽章文字','--badge-text','#ffffff'],
-    ['阶段表头','① Account Access','--col1','#374151'],
-    ['阶段表头','② Application Started','--col2','#16a34a'],
-    ['阶段表头','③ Cool Down Period','--col3','#2563eb'],
-    ['阶段表头','④ Actions During Cool Down','--col4','#6d28d9'],
-    ['阶段表头','⑤ Ready for Submission','--col5','#f59e0b'],
-    ['阶段表头','⑦ Final States','--col6','#7c3aed'],
-    ['阶段表头','表头文字','--col-text','#ffffff'],
-    ['卡片与文字','页面背景','--page-bg','#eef1f5'],
-    ['卡片与文字','卡片背景','--card-bg','#ffffff'],
-    ['卡片与文字','标题文字','--title-color','#1f2937'],
-    ['卡片与文字','正文文字','--body-color','#6b7280'],
-    ['卡片与文字','强调色 (Franchisee/Admin)','--accent','#2563eb'],
-    ['按钮','主按钮','--btn-primary','#2563eb'],
-    ['按钮','主按钮文字','--btn-primary-text','#ffffff'],
-    ['按钮','撤回按钮 (红)','--btn-danger','#dc2626'],
-    ['提示框','通知框背景','--note-bg','#f9fafb'],
-    ['提示框','警告框背景','--warn-bg','#fffbeb'],
-    ['提示框','撤回卡片背景','--danger-card-bg','#fff5f5'],
-    ['图标','绿色图标','--ic-green','#16a34a'],
-    ['图标','蓝色图标','--ic-blue','#2563eb'],
-    ['图标','紫色图标','--ic-indigo','#6d28d9'],
-    ['图标','橙色图标','--ic-orange','#f59e0b'],
-    ['图标','红色图标','--ic-red','#dc2626'],
+    ['Banner','Banner gradient · start','--banner-from','#1d4ed8'],
+    ['Banner','Banner gradient · end','--banner-to','#2563eb'],
+    ['Banner','Banner text','--banner-text','#ffffff'],
+    ['Banner','Badge background','--badge-bg','#3b82f6'],
+    ['Banner','Badge text','--badge-text','#ffffff'],
+    ['Stage headers','① Account Access','--col1','#374151'],
+    ['Stage headers','② Application Started','--col2','#16a34a'],
+    ['Stage headers','③ Cool Down Period','--col3','#2563eb'],
+    ['Stage headers','④ Actions During Cool Down','--col4','#6d28d9'],
+    ['Stage headers','⑤ Ready for Submission','--col5','#f59e0b'],
+    ['Stage headers','⑦ Final States','--col6','#7c3aed'],
+    ['Stage headers','Header text','--col-text','#ffffff'],
+    ['Cards & text','Page background','--page-bg','#eef1f5'],
+    ['Cards & text','Card background','--card-bg','#ffffff'],
+    ['Cards & text','Title text','--title-color','#1f2937'],
+    ['Cards & text','Body text','--body-color','#6b7280'],
+    ['Cards & text','Accent (Franchisee/Admin)','--accent','#2563eb'],
+    ['Button','Primary button','--btn-primary','#2563eb'],
+    ['Button','Primary button text','--btn-primary-text','#ffffff'],
+    ['Button','Withdraw button (red)','--btn-danger','#dc2626'],
+    ['Callouts','Callout background','--note-bg','#f9fafb'],
+    ['Callouts','Warning background','--warn-bg','#fffbeb'],
+    ['Callouts','Withdraw card background','--danger-card-bg','#fff5f5'],
+    ['Icon','Green icon','--ic-green','#16a34a'],
+    ['Icon','Blue icon','--ic-blue','#2563eb'],
+    ['Icon','Purple icon','--ic-indigo','#6d28d9'],
+    ['Icon','Orange icon','--ic-orange','#f59e0b'],
+    ['Icon','Red icon','--ic-red','#dc2626'],
   ];
 
   const root = document.documentElement;
@@ -984,18 +984,18 @@
 
   // Human-readable label so the tooltip + red outline make the delete scope obvious.
   function rmLabel(el){
-    if(el.matches('.fb')) return '删除整个组块';
-    if(el.matches('.fb-head')) return '删除标题栏';
-    if(el.matches('.fb-list li')) return '删除这一条';
-    if(el.matches('.fb-list')) return '删除整个列表';
-    if(el.matches('.fb-sub')) return '删除这个小框';
-    if(el.matches('.col')) return '删除整个阶段';
-    if(el.matches('.card')) return '删除整张卡片';
-    if(el.matches('.note, .notif-head, .note-head')) return '删除通知框';
-    if(el.matches('.field, .label-only')) return '删除这一行';
-    if(el.matches('.btn')) return '删除按钮';
-    if(el.matches('.badge, .corner-tag')) return '删除标签';
-    return '删除高亮的这一项';
+    if(el.matches('.fb')) return 'Delete the whole block';
+    if(el.matches('.fb-head')) return 'Delete the header bar';
+    if(el.matches('.fb-list li')) return 'Delete this item';
+    if(el.matches('.fb-list')) return 'Delete the whole list';
+    if(el.matches('.fb-sub')) return 'Delete this box';
+    if(el.matches('.col')) return 'Delete the whole stage';
+    if(el.matches('.card')) return 'Delete the whole card';
+    if(el.matches('.note, .notif-head, .note-head')) return 'Delete the callout';
+    if(el.matches('.field, .label-only')) return 'Delete this row';
+    if(el.matches('.btn')) return 'Delete the button';
+    if(el.matches('.badge, .corner-tag')) return 'Delete the label';
+    return 'Delete the highlighted item';
   }
 
   function setActiveRemovable(el){
@@ -1049,7 +1049,7 @@
   delFloat.addEventListener('mouseleave', () => { if(activeRemovable) activeRemovable.classList.remove('rm-armed'); });
   delFloat.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
-    if(activeRemovable) removeBlock(activeRemovable, '已删除 1 项');
+    if(activeRemovable) removeBlock(activeRemovable, 'Deleted 1 item');
   });
 
   function removeBlock(el, msg){
@@ -1061,7 +1061,7 @@
     setActiveRemovable(null);
     if(typeof renderEdges === 'function') renderEdges();   // a removed flow block drops its edges
     injectInserters();
-    showToast(msg || '已删除 1 项');
+    showToast(msg || 'Deleted 1 item');
   }
   function undoRemove(){
     const last = undoStack.pop();
@@ -1115,7 +1115,7 @@
   }
 
   function addCardBar(col){
-    const bar = makeEl('<button class="add-ui add-card-bar" type="button"><i data-lucide="plus"></i>卡片</button>');
+    const bar = makeEl('<button class="add-ui add-card-bar" type="button"><i data-lucide="plus"></i>Card</button>');
     bar.addEventListener('click', () => addCard(col));
     col.appendChild(bar);
   }
@@ -1355,7 +1355,7 @@
   }
   function resetTemplate(){
     if(currentView() === 'flow'){
-      if(!confirm('确定要清除当前图表的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
+      if(!confirm('Clear all changes to the current chart and restore the initial template? This cannot be undone.')) return;
       try{ localStorage.removeItem(flowKey()); }catch(e){}
       flowReady = false;
       connectors = [];
@@ -1368,7 +1368,7 @@
       flowSaveState(); recordHistory();
       return;
     }
-    if(!confirm('确定要清除步骤图的所有改动，恢复初始模板吗？此操作不可撤销。')) return;
+    if(!confirm('Clear all changes to the step diagram and restore the initial template? This cannot be undone.')) return;
     try{ localStorage.removeItem(LS_KEY); }catch(e){}
     autosaveReady = false;
     boardEl.innerHTML = TEMPLATE_HTML;
@@ -1407,13 +1407,13 @@
       : { v:1, view:'step', html: serializeBoard(), colors: currentColors() };
   }
   async function copyShareLink(){
-    const status=document.getElementById('status'); status.textContent='生成链接…';
+    const status=document.getElementById('status'); status.textContent='Generating link…';
     try{
       const enc=await gzip(JSON.stringify(shareDoc()));
       const url=location.origin+location.pathname+'#s='+enc;
       await navigator.clipboard.writeText(url);   // clipboard only; keep the working URL clean
-      status.textContent = enc.length>30000 ? '链接已复制（较长，建议改用 JSON 文件）' : '分享链接已复制 ✓';
-    }catch(e){ console.error(e); status.textContent='生成链接失败'; }
+      status.textContent = enc.length>30000 ? 'Link copied (long; consider using a JSON file instead)' : 'Share link copied ✓';
+    }catch(e){ console.error(e); status.textContent='Failed to generate link'; }
     setTimeout(()=>status.textContent='',3000);
   }
   // Returns the view a loaded doc targets, after applying it. null = nothing loaded.
@@ -1503,9 +1503,9 @@
     const reader = new FileReader();
     reader.onload = () => {
       let data;
-      try{ data = JSON.parse(reader.result); }catch(e){ alert('文件不是有效的 JSON'); return; }
+      try{ data = JSON.parse(reader.result); }catch(e){ alert('The file is not valid JSON'); return; }
       const view = applyDoc(data);                     // imported files are untrusted too
-      if(!view){ alert('JSON 缺少图表内容'); return; }
+      if(!view){ alert('The JSON has no chart content'); return; }
       if(view === 'step'){ initBoard(); scheduleSave(); }
       else { scheduleFlowSave(); }
       setView(view);
@@ -1565,7 +1565,7 @@
   }
   async function exportImage(kind){
     const status = document.getElementById('status');
-    status.textContent = '导出中…';
+    status.textContent = 'Exporting…';
     try{
       const canvas = await snapshot();
       const base = exportBaseName();
@@ -1581,10 +1581,10 @@
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h);
         pdf.save(base + '.pdf');
       }
-      status.textContent = '已导出 ✓';
+      status.textContent = 'Exported ✓';
     }catch(err){
       console.error(err);
-      status.textContent = '导出失败，请重试';
+      status.textContent = 'Export failed, please try again';
     }
     setTimeout(()=> status.textContent = '', 2500);
   }
@@ -1631,8 +1631,8 @@
     document.querySelectorAll('.tb-flow').forEach(g => g.hidden = !onFlowCanvas);
     document.querySelectorAll('.tb-step').forEach(g => g.hidden =  onFlowCanvas);
     document.getElementById('hint').textContent = onFlowCanvas
-      ? '拖蓝点连线 · 拖橙色方块调折线拐角 · 复制/剪切/粘贴/再制 Ctrl+C/X/V/D · 撤销/重做 Ctrl+Z / Ctrl+Shift+Z · 双击连线加文字 · 滚轮缩放 · 拖空白平移'
-      : '点击文字直接编辑 · 选中文字可加粗/改色 · 悬停出现 ＋（加内容）和 ×（删除）· 改动自动保存';
+      ? 'Drag the blue dots to connect · drag the orange square to bend the elbow · copy/cut/paste/duplicate Ctrl+C/X/V/D · undo/redo Ctrl+Z / Ctrl+Shift+Z · double-click a connector to add text · scroll to zoom · drag empty space to pan'
+      : 'Click text to edit it · select text to bold / recolor it · hover to reveal + (add) and × (delete) · changes save automatically';
     try{ localStorage.setItem('active-view', v); }catch(e){}
     if(v === 'flow')  ensureFlowDoc('franchisor');
     if(v === 'admin') ensureFlowDoc('admin-flow');
@@ -1822,7 +1822,7 @@
     connectors.splice(i,1);
     if(selected.type==='edge' && selected.ref===rec) selected={type:null,ref:null};
     renderEdges(); renderSidebar();
-    undoStack.push({ edge:rec, index:i }); showToast('已删除连线'); scheduleFlowSave(); recordHistory();
+    undoStack.push({ edge:rec, index:i }); showToast('Connector deleted'); scheduleFlowSave(); recordHistory();
   }
   function startEndpointDrag(rec, which, e){
     flowDragging=true;
@@ -1840,7 +1840,7 @@
   flowEdges.addEventListener('dblclick', e=>{
     const p=e.target.closest('path.edge'); if(!p) return;
     const rec=connectors.find(c=>c.id===p.dataset.id); if(!rec) return;
-    if(!rec.label) rec.label='文字';
+    if(!rec.label) rec.label='Text';
     renderEdges(); selectEl(rec,'edge'); scheduleFlowSave();
     const lab=flowLabels.querySelector('.edge-label[data-id="'+cssEsc(rec.id)+'"]'); if(lab) lab.focus();
   });
@@ -1951,21 +1951,21 @@
   function blockPanel(el){
     const head = el.querySelector(':scope > .fb-head');
     return ''
-      + '<div class="fs-h"><i data-lucide="square"></i>组块（'+(el.dataset.type||'step')+'）</div>'
-      + '<div class="fs-grp">颜色</div>'
-      + '<div class="fs-row"><label>块底色</label><input type="color" data-k="bg" value="'+hexOf(el,'backgroundColor','#ffffff')+'"></div>'
-      + (head ? '<div class="fs-row"><label>标题栏色</label><input type="color" data-k="headBg" value="'+hexOf(head,'backgroundColor','#2563eb')+'"></div>' : '')
-      + '<div class="fs-row"><label>文字色</label><input type="color" data-k="color" value="'+hexOf(el,'color','#374151')+'"></div>'
-      + '<div class="fs-grp">添加内容</div>'
+      + '<div class="fs-h"><i data-lucide="square"></i>Block ('+(el.dataset.type||'step')+')</div>'
+      + '<div class="fs-grp">Color</div>'
+      + '<div class="fs-row"><label>Block background</label><input type="color" data-k="bg" value="'+hexOf(el,'backgroundColor','#ffffff')+'"></div>'
+      + (head ? '<div class="fs-row"><label>Header bar color</label><input type="color" data-k="headBg" value="'+hexOf(head,'backgroundColor','#2563eb')+'"></div>' : '')
+      + '<div class="fs-row"><label>Text color</label><input type="color" data-k="color" value="'+hexOf(el,'color','#374151')+'"></div>'
+      + '<div class="fs-grp">Add content</div>'
       + '<div class="fs-addgrid">'
-      +   '<button data-add="text"><i data-lucide="type"></i>文字</button>'
-      +   '<button data-add="field"><i data-lucide="align-left"></i>状态行</button>'
-      +   '<button data-add="button"><i data-lucide="square"></i>按钮</button>'
-      +   '<button data-add="note"><i data-lucide="mail"></i>通知框</button>'
-      +   '<button data-add="icon"><i data-lucide="image"></i>图标</button>'
+      +   '<button data-add="text"><i data-lucide="type"></i>Text</button>'
+      +   '<button data-add="field"><i data-lucide="align-left"></i>Field</button>'
+      +   '<button data-add="button"><i data-lucide="square"></i>Button</button>'
+      +   '<button data-add="note"><i data-lucide="mail"></i>Callout</button>'
+      +   '<button data-add="icon"><i data-lucide="image"></i>Icon</button>'
       + '</div>'
-      + '<div class="fs-grp">操作</div>'
-      + '<button class="fs-btn danger" data-act="del"><i data-lucide="trash-2"></i>删除整个组块</button>';
+      + '<div class="fs-grp">Actions</div>'
+      + '<button class="fs-btn danger" data-act="del"><i data-lucide="trash-2"></i>Delete the whole block</button>';
   }
   function wireBlockPanel(el){
     flowSidebar.querySelectorAll('input[type=color]').forEach(inp=> inp.addEventListener('input', ()=>{
@@ -1976,26 +1976,26 @@
       scheduleFlowSave();
     }));
     flowSidebar.querySelectorAll('button[data-add]').forEach(b=> b.addEventListener('click', ()=>{ addInto(el, b.dataset.add); scheduleFlowSave(); }));
-    flowSidebar.querySelector('[data-act="del"]').addEventListener('click', ()=>{ removeBlock(el,'已删除组块'); selectEl(null); });
+    flowSidebar.querySelector('[data-act="del"]').addEventListener('click', ()=>{ removeBlock(el,'Block deleted'); selectEl(null); });
   }
   function edgePanel(rec){
     return ''
-      + '<div class="fs-h"><i data-lucide="spline"></i>连线</div>'
-      + '<div class="fs-grp">方向 / 箭头</div>'
-      + '<div class="fs-row"><label>起点箭头</label><div class="fs-seg"><button data-tg="arrowStart" class="'+(rec.arrowStart?'on':'')+'">'+(rec.arrowStart?'开':'关')+'</button></div></div>'
-      + '<div class="fs-row"><label>终点箭头</label><div class="fs-seg"><button data-tg="arrowEnd" class="'+(rec.arrowEnd?'on':'')+'">'+(rec.arrowEnd?'开':'关')+'</button></div></div>'
-      + '<div class="fs-row"><label>箭头样式</label><select data-k="arrowType"><option value="solid"'+sel(rec.arrowType,'solid')+'>实心</option><option value="open"'+sel(rec.arrowType,'open')+'>空心</option><option value="thin"'+sel(rec.arrowType,'thin')+'>细线</option></select></div>'
-      + '<div class="fs-grp">线型 / 路由</div>'
-      + '<div class="fs-row"><label>线型</label><select data-k="lineStyle"><option value="solid"'+sel(rec.lineStyle,'solid')+'>实线</option><option value="dashed"'+sel(rec.lineStyle,'dashed')+'>虚线</option><option value="dotted"'+sel(rec.lineStyle,'dotted')+'>点线</option></select></div>'
-      + '<div class="fs-row"><label>路由</label><select data-k="routing"><option value="straight"'+sel(rec.routing,'straight')+'>直线</option><option value="elbow"'+sel(rec.routing,'elbow')+'>折线</option><option value="curved"'+sel(rec.routing,'curved')+'>曲线</option></select></div>'
-      + (rec.routing==='elbow' ? '<div class="fs-row"><label>拐角位置</label><input type="range" min="0" max="1" step="0.02" data-k="elbow" value="'+(rec.elbow==null?0.5:rec.elbow)+'"></div>' : '')
-      + '<div class="fs-grp">外观</div>'
-      + '<div class="fs-row"><label>粗细</label><input type="range" min="1" max="8" step="0.5" data-k="width" value="'+rec.width+'"></div>'
-      + '<div class="fs-row"><label>颜色</label><input type="color" data-k="color" value="'+(/^#[0-9a-f]{6}$/i.test(rec.color)?rec.color:'#64748b')+'"></div>'
-      + '<div class="fs-grp">线上文字</div>'
-      + '<div class="fs-row"><input type="text" data-k="label" placeholder="（空）" value="'+(rec.label||'').replace(/"/g,'&quot;')+'" style="width:100%"></div>'
-      + '<div class="fs-grp">操作</div>'
-      + '<button class="fs-btn danger" data-act="del"><i data-lucide="trash-2"></i>删除连线</button>';
+      + '<div class="fs-h"><i data-lucide="spline"></i>Connector</div>'
+      + '<div class="fs-grp">Direction / arrow</div>'
+      + '<div class="fs-row"><label>Start arrow</label><div class="fs-seg"><button data-tg="arrowStart" class="'+(rec.arrowStart?'on':'')+'">'+(rec.arrowStart?'On':'Off')+'</button></div></div>'
+      + '<div class="fs-row"><label>End arrow</label><div class="fs-seg"><button data-tg="arrowEnd" class="'+(rec.arrowEnd?'on':'')+'">'+(rec.arrowEnd?'On':'Off')+'</button></div></div>'
+      + '<div class="fs-row"><label>Arrow style</label><select data-k="arrowType"><option value="solid"'+sel(rec.arrowType,'solid')+'>Solid</option><option value="open"'+sel(rec.arrowType,'open')+'>Hollow</option><option value="thin"'+sel(rec.arrowType,'thin')+'>Thin</option></select></div>'
+      + '<div class="fs-grp">Line / routing</div>'
+      + '<div class="fs-row"><label>Line style</label><select data-k="lineStyle"><option value="solid"'+sel(rec.lineStyle,'solid')+'>Solid</option><option value="dashed"'+sel(rec.lineStyle,'dashed')+'>Dashed</option><option value="dotted"'+sel(rec.lineStyle,'dotted')+'>Dotted</option></select></div>'
+      + '<div class="fs-row"><label>Routing</label><select data-k="routing"><option value="straight"'+sel(rec.routing,'straight')+'>Straight</option><option value="elbow"'+sel(rec.routing,'elbow')+'>Elbow</option><option value="curved"'+sel(rec.routing,'curved')+'>Curved</option></select></div>'
+      + (rec.routing==='elbow' ? '<div class="fs-row"><label>Corner position</label><input type="range" min="0" max="1" step="0.02" data-k="elbow" value="'+(rec.elbow==null?0.5:rec.elbow)+'"></div>' : '')
+      + '<div class="fs-grp">Appearance</div>'
+      + '<div class="fs-row"><label>Width</label><input type="range" min="1" max="8" step="0.5" data-k="width" value="'+rec.width+'"></div>'
+      + '<div class="fs-row"><label>Color</label><input type="color" data-k="color" value="'+(/^#[0-9a-f]{6}$/i.test(rec.color)?rec.color:'#64748b')+'"></div>'
+      + '<div class="fs-grp">Label</div>'
+      + '<div class="fs-row"><input type="text" data-k="label" placeholder="(empty)" value="'+(rec.label||'').replace(/"/g,'&quot;')+'" style="width:100%"></div>'
+      + '<div class="fs-grp">Actions</div>'
+      + '<button class="fs-btn danger" data-act="del"><i data-lucide="trash-2"></i>Delete connector</button>';
   }
   function wireEdgePanel(rec){
     flowSidebar.querySelectorAll('[data-tg]').forEach(b=> b.addEventListener('click', ()=>{ rec[b.dataset.tg]=!rec[b.dataset.tg]; renderEdges(); renderSidebar(); scheduleFlowSave(); }));
@@ -2003,24 +2003,24 @@
       const k=inp.dataset.k;
       rec[k] = (k==='width' || k==='elbow') ? parseFloat(inp.value) : inp.value;
       renderEdges(); scheduleFlowSave();
-      if(k==='routing') renderSidebar();                 // show/hide the 拐角位置 slider
+      if(k==='routing') renderSidebar();                 // show/hide the Corner position slider
     }));
     flowSidebar.querySelector('[data-act="del"]').addEventListener('click', ()=> removeEdge(rec));
   }
   function emptyPanel(){
     return ''
-      + '<div class="fs-h"><i data-lucide="mouse-pointer-click"></i>未选中</div>'
-      + '<p class="fs-empty">点击<b>组块</b>或<b>连线</b>编辑其属性。<br>拖组块边缘的蓝点可拉出连线。<br>双击连线可加线上文字。</p>'
-      + '<div class="fs-grp">画布</div>'
-      + '<div class="fs-row"><label>网格吸附</label><div class="fs-seg"><button data-act="grid" class="'+(gridSnap?'on':'')+'">'+(gridSnap?'开':'关')+'</button></div></div>'
-      + '<button class="fs-btn" data-act="fit"><i data-lucide="maximize"></i>适应窗口</button>';
+      + '<div class="fs-h"><i data-lucide="mouse-pointer-click"></i>Nothing selected</div>'
+      + '<p class="fs-empty">Click a <b>block</b> or a <b>connector</b> to edit its properties.<br>Drag the blue dots around a block to pull out a connector.<br>Double-click a connector to add a label.</p>'
+      + '<div class="fs-grp">Canvas</div>'
+      + '<div class="fs-row"><label>Grid snap</label><div class="fs-seg"><button data-act="grid" class="'+(gridSnap?'on':'')+'">'+(gridSnap?'On':'Off')+'</button></div></div>'
+      + '<button class="fs-btn" data-act="fit"><i data-lucide="maximize"></i>Fit to window</button>';
   }
   function wireEmptyPanel(){
     const g=flowSidebar.querySelector('[data-act="grid"]'); if(g) g.addEventListener('click', ()=>{ gridSnap=!gridSnap; renderSidebar(); });
     const f=flowSidebar.querySelector('[data-act="fit"]'); if(f) f.addEventListener('click', flowFit);
   }
 
-  // ---- add-block menu (toolbar "组块") --------------------------------------
+  // ---- add-block menu (toolbar "Block") --------------------------------------
   function openFbAddMenu(e){
     const m=document.getElementById('fb-add-menu'); m.classList.toggle('show');
     const r=e.currentTarget.getBoundingClientRect(); m.style.top=(r.bottom+6)+'px'; m.style.left=r.left+'px';
@@ -2073,7 +2073,7 @@
     if(!selected.type) return;
     copySelection();
     if(selected.type==='edge') removeEdge(selected.ref);
-    else { removeBlock(selected.ref,'已剪切'); selectEl(null); }
+    else { removeBlock(selected.ref,'Cut'); selectEl(null); }
     recordHistory();
   }
 
@@ -2099,8 +2099,8 @@
     flowSaveState();
     historyFrozen=false;
   }
-  function flowUndo(){ if(currentView()!=='flow') return; if(flowHistIndex<=0){ showToast('没有可撤销的操作'); return; } flowHistIndex--; restoreSnapshot(flowHistory[flowHistIndex]); showToast('已撤销'); }
-  function flowRedo(){ if(currentView()!=='flow') return; if(flowHistIndex>=flowHistory.length-1){ showToast('没有可重做的操作'); return; } flowHistIndex++; restoreSnapshot(flowHistory[flowHistIndex]); showToast('已重做'); }
+  function flowUndo(){ if(currentView()!=='flow') return; if(flowHistIndex<=0){ showToast('Nothing to undo'); return; } flowHistIndex--; restoreSnapshot(flowHistory[flowHistIndex]); showToast('Undone'); }
+  function flowRedo(){ if(currentView()!=='flow') return; if(flowHistIndex>=flowHistory.length-1){ showToast('Nothing to redo'); return; } flowHistIndex++; restoreSnapshot(flowHistory[flowHistIndex]); showToast('Redone'); }
 
   // ---- keyboard shortcuts ----------------------------------------------------
   window.addEventListener('keydown', e=>{
@@ -2120,7 +2120,7 @@
     if(e.key==='Escape'){ selectEl(null); return; }
     if(e.key==='Delete'){
       if(selected.type==='edge') removeEdge(selected.ref);
-      else if(selected.type==='block'){ removeBlock(selected.ref,'已删除组块'); selectEl(null); recordHistory(); }
+      else if(selected.type==='block'){ removeBlock(selected.ref,'Block deleted'); selectEl(null); recordHistory(); }
     }
   });
 
