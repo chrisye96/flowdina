@@ -59,6 +59,7 @@
   .tbtn:hover{background:#f9fafb;}
   .tbtn.primary{background:#111827; color:#fff; border-color:#111827;}
   .tbtn.primary:hover{background:#1f2937;}
+  .tbtn.active{background:#eef2ff; color:#4f46e5; border-color:#c7c2f0;}
   .tbtn svg{width:16px; height:16px;}
   .hint{font-size:12.5px; color:#6b7280; margin-left:auto;}
   #status{font-size:12.5px; color:#2563eb; font-weight:600;}
@@ -303,6 +304,23 @@
   body.exporting .add-ui{display:none !important;}
   body.exporting .add-float, body.exporting .add-menu, body.exporting .icon-picker{display:none !important;}
 
+  /* Insert-between "+" affordances — hover a gap to add a stage/card/block there.
+     .add-ui so serialize + export strip them (like .add-card-bar); no layout footprint. */
+  .insert-slot{ position:absolute; z-index:7; display:flex; align-items:center; justify-content:center; }
+  .insert-slot .ins-plus{ opacity:0; transition:opacity .1s; width:22px; height:22px; border-radius:50%;
+    background:#2563eb; color:#fff; font-size:17px; line-height:20px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 1px 5px rgba(16,24,40,.3); }
+  .insert-slot::before{ content:''; position:absolute; background:#93c5fd; opacity:0; transition:opacity .1s; border-radius:2px; }
+  .insert-slot:hover .ins-plus{ opacity:1; }
+  .insert-slot:hover::before{ opacity:1; }
+  .col-insert{ top:0; bottom:0; left:-13px; width:20px; }
+  .col-insert::before{ top:6px; bottom:6px; left:50%; margin-left:-1px; width:2px; }
+  .card-insert{ top:-13px; left:0; right:0; height:20px; }
+  .card-insert::before{ left:10px; right:10px; top:50%; margin-top:-1px; height:2px; }
+  .block-insert{ position:relative; height:0; }
+  .block-insert .ins-plus{ position:absolute; top:-11px; left:50%; margin-left:-11px; }
+  .block-insert::before{ position:absolute; top:-1px; left:6px; right:6px; height:2px; }
+
   /* ---------- Color settings panel (NOT part of export) ---------- */
   .settings{
     position:fixed; top:0; right:0; height:100vh; width:312px; z-index:60;
@@ -406,6 +424,7 @@
   /* contextual property sidebar */
   .flow-sidebar{width:290px; flex:none; background:#fff; border-left:1px solid #e5e7eb; padding:16px; overflow-y:auto;}
   body.exporting .flow-sidebar{display:none;}
+  body.sidebar-collapsed .flow-sidebar{display:none;}
   .fs-empty{color:#9ca3af; font-size:12.5px; line-height:1.7;}
   .fs-h{font-size:13.5px; font-weight:700; margin:0 0 6px; display:flex; align-items:center; gap:7px;}
   .fs-h svg{width:16px; height:16px;}
@@ -450,6 +469,7 @@
       <button class="tbtn" onclick="flowZoom(-1)" title="缩小"><i data-lucide="zoom-out"></i></button>
       <button class="tbtn" onclick="flowFit()" title="适应窗口"><i data-lucide="maximize"></i></button>
       <button class="tbtn" onclick="flowZoom(1)" title="放大"><i data-lucide="zoom-in"></i></button>
+      <button class="tbtn" id="sidebar-toggle" onclick="toggleSidebar()" title="显示 / 隐藏属性侧栏"><i data-lucide="panel-right"></i></button>
     </div>
 
     <!-- step-only controls -->
@@ -689,6 +709,7 @@
   <!-- ================= INLINE FORMAT TOOLBAR (appears on text selection; excluded from export) ================= -->
   <div class="seltool" id="seltool">
     <button class="st-btn" id="st-bold" title="加粗 / 取消加粗（也可用 Ctrl/Cmd+B）"><i data-lucide="bold"></i></button>
+    <button class="st-btn" id="st-underline" title="下划线 / 取消（也可用 Ctrl/Cmd+U）"><i data-lucide="underline"></i></button>
     <span class="st-sep"></span>
     <span id="st-sw-anchor" style="display:flex; gap:7px; align-items:center;"></span>
     <span class="st-sep"></span>
@@ -808,6 +829,7 @@
   // Pops up on text selection inside the chart. Operates on the selected text only.
   const seltool = document.getElementById('seltool');
   const boldBtn = document.getElementById('st-bold');
+  const underlineBtn = document.getElementById('st-underline');
   const customColor = document.getElementById('st-color');
   const SWATCHES = ['#111827','#6b7280','#ffffff','#2563eb','#16a34a','#f59e0b','#7c3aed','#dc2626'];
   let lastRange = null;
@@ -833,8 +855,8 @@
     const sel = window.getSelection();
     if(!sel || sel.rangeCount===0 || sel.isCollapsed) return null;
     let n = sel.anchorNode; n = (n && n.nodeType===3) ? n.parentElement : n;
-    const board = document.getElementById('board');
-    if(!n || !board.contains(n) || !n.closest('[contenteditable="true"]')) return null;
+    // Any editable text in either view qualifies: step (#board) or flow/admin (#flow-view).
+    if(!n || !n.closest('#board, #flow-view') || !n.closest('[contenteditable="true"]')) return null;
     return sel.getRangeAt(0);
   }
 
@@ -863,6 +885,7 @@
     if(rect.width===0 && rect.height===0){ hideTool(); return; }
     positionTool(rect);
     boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+    underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
     const startEl = (r.startContainer.nodeType===3 ? r.startContainer.parentElement : r.startContainer);
     const hex = rgbToHex(getComputedStyle(startEl).color);
     if(hex) customColor.value = hex;
@@ -887,6 +910,13 @@
     refreshTool();
   }
 
+  function applyUnderline(){
+    if(!restoreSel()) return;
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('underline');
+    refreshTool();
+  }
+
   function applyColor(hex){
     if(!restoreSel()) return;
     document.execCommand('styleWithCSS', false, true);
@@ -896,6 +926,7 @@
   }
 
   boldBtn.addEventListener('mousedown', e=>{ e.preventDefault(); applyBold(); });
+  underlineBtn.addEventListener('mousedown', e=>{ e.preventDefault(); applyUnderline(); });
   customColor.addEventListener('mousedown', ()=>{ const r = editableSelection(); if(r) lastRange = r.cloneRange(); });
   customColor.addEventListener('input', e=> applyColor(e.target.value));
 
@@ -1010,10 +1041,13 @@
 
   function removeBlock(el, msg){
     if(!el) return;
-    undoStack.push({ el, parent: el.parentNode, next: el.nextSibling });
+    let nxt = el.nextSibling;                                 // skip insert-slots so undo restores to the right spot
+    while(nxt && nxt.nodeType===1 && nxt.classList && nxt.classList.contains('insert-slot')) nxt = nxt.nextSibling;
+    undoStack.push({ el, parent: el.parentNode, next: nxt });
     el.remove();
     setActiveRemovable(null);
     if(typeof renderEdges === 'function') renderEdges();   // a removed flow block drops its edges
+    injectInserters();
     showToast(msg || '已删除 1 项');
   }
   function undoRemove(){
@@ -1026,6 +1060,7 @@
     if(last.next && last.next.parentNode === last.parent) last.parent.insertBefore(last.el, last.next);
     else last.parent.appendChild(last.el);
     if(typeof renderEdges === 'function') renderEdges();
+    injectInserters();
     hideToast();
   }
   function showToast(msg){
@@ -1076,25 +1111,84 @@
     const card = activate(buildCard());
     if(bar) col.insertBefore(card, bar); else col.appendChild(card);
     refreshIcons();
+    injectInserters();
   }
-  function addStage(){
-    const cols = document.querySelector('#board .columns');
-    const n = cols.querySelectorAll('.col').length + 1;
+  // Insert a fresh card just before `refCard` (used by the between-cards "+" slot).
+  function insertCardBefore(col, refCard){
+    const card = activate(buildCard());
+    col.insertBefore(card, refCard);
+    refreshIcons();
+    injectInserters();
+  }
+  function buildStage(n){
     const cN = ((n - 1) % 6) + 1;
-    const col = activate(makeEl('<div class="col"><div class="col-head c'+cN+'"><div class="col-head-top"><span class="num ce">'+n+'</span><span class="col-title ce">New Stage</span></div><div class="col-sub ce">Subtitle</div></div></div>'));
-    cols.appendChild(col);
+    return makeEl('<div class="col"><div class="col-head c'+cN+'"><div class="col-head-top"><span class="num ce">'+n+'</span><span class="col-title ce">New Stage</span></div><div class="col-sub ce">Subtitle</div></div></div>');
+  }
+  function addStage(){ insertStage(null); }                 // toolbar button → append at the end
+  // Insert a stage before `beforeCol` (null = append). Each new stage seeds one card.
+  function insertStage(beforeCol){
+    const cols = document.querySelector('#board .columns');
+    const n = cols.querySelectorAll(':scope > .col').length + 1;
+    const col = activate(buildStage(n));
+    cols.insertBefore(col, beforeCol);
     addCardBar(col);
     addCard(col);
+    injectInserters();
   }
-  function addInto(card, type){
+  function addInto(card, type, ref){
     // Flow blocks (.fb) hold their content in .fb-body; step cards append directly.
     const host = card.matches('.fb') ? (card.querySelector('.fb-body') || card) : card;
     if(type === 'icon'){ openIconPickerForCard(host); return; }
     const node = buildPiece(type);
     if(!node) return;
-    host.appendChild(activate(node));
+    const el = activate(node);
+    if(ref && ref.parentElement === host) host.insertBefore(el, ref); else host.appendChild(el);
     refreshIcons();
+    injectInserters();
   }
+
+  // ----- Insert-between "+" slots (Feature: insert, not just append) -----
+  // Slots are .add-ui (stripped on save/export) and are rebuilt from scratch by
+  // injectInserters() after every structural change, so they never drift or persist.
+  let pendingInsert = null;   // {card, ref} set while the add-menu is opened from a block slot
+  function makeSlot(cls, kind){
+    return makeEl('<div class="add-ui insert-slot '+cls+'" data-ins="'+kind+'"><span class="ins-plus">+</span></div>');
+  }
+  function injectInserters(){
+    const board = document.getElementById('board');
+    board.querySelectorAll('.insert-slot').forEach(n => n.remove());
+    const cols = board.querySelector('.columns');
+    if(!cols) return;
+    cols.querySelectorAll(':scope > .col').forEach(col => {
+      col.appendChild(makeSlot('col-insert', 'stage'));                 // stage: left gap of this column
+      col.querySelectorAll(':scope > .card').forEach(card => {
+        card.appendChild(makeSlot('card-insert', 'card'));             // card: top gap of this card
+        [...card.children].forEach(ch => {                             // block: before each content piece
+          if(!ch.classList.contains('insert-slot')) card.insertBefore(makeSlot('block-insert', 'block'), ch);
+        });
+      });
+    });
+  }
+  function openInsertMenu(card, ref, ev){
+    pendingInsert = { card, ref };
+    addMenu.classList.add('show');
+    const w = addMenu.offsetWidth || 160;
+    addMenu.style.top = (ev.clientY + 8) + 'px';
+    addMenu.style.left = Math.max(8, Math.min(ev.clientX - w / 2, window.innerWidth - w - 8)) + 'px';
+  }
+  document.getElementById('board').addEventListener('click', e => {
+    const slot = e.target.closest('.insert-slot');
+    if(!slot) return;
+    e.preventDefault(); e.stopPropagation();
+    const kind = slot.dataset.ins;
+    if(kind === 'stage')      insertStage(slot.closest('.col'));
+    else if(kind === 'card')  insertCardBefore(slot.closest('.col'), slot.closest('.card'));
+    else {                                                              // block: pick a type, insert before the next piece
+      let ref = slot.nextElementSibling;
+      while(ref && ref.classList.contains('insert-slot')) ref = ref.nextElementSibling;
+      openInsertMenu(slot.closest('.card'), ref, e);
+    }
+  });
 
   // ----- icon picker (shape + color) -----
   const ICON_NAMES = ['check','x','clock','user','mail','bell','target','clipboard-list',
@@ -1173,10 +1267,14 @@
   });
   addMenu.querySelectorAll('button[data-add]').forEach(b => {
     b.addEventListener('mousedown', e => e.preventDefault());
-    b.addEventListener('click', () => { if(currentCard) addInto(currentCard, b.dataset.add); addMenu.classList.remove('show'); });
+    b.addEventListener('click', () => {
+      if(pendingInsert){ addInto(pendingInsert.card, b.dataset.add, pendingInsert.ref); pendingInsert = null; }
+      else if(currentCard){ addInto(currentCard, b.dataset.add); }
+      addMenu.classList.remove('show');
+    });
   });
   document.addEventListener('mousedown', e => {
-    if(!addMenu.contains(e.target) && !addFloat.contains(e.target)) addMenu.classList.remove('show');
+    if(!addMenu.contains(e.target) && !addFloat.contains(e.target) && !(e.target.closest && e.target.closest('.insert-slot'))){ addMenu.classList.remove('show'); pendingInsert = null; }
     if(!iconPicker.contains(e.target) && !(e.target.closest && e.target.closest('#board .card-icon')) && !(e.target.closest && e.target.closest('.add-menu')))
       iconPicker.classList.remove('show');
   });
@@ -1196,6 +1294,7 @@
   function initBoard(){
     boardEl.querySelectorAll('.ce').forEach(el=>{ el.setAttribute('contenteditable','true'); el.setAttribute('spellcheck','false'); });
     boardEl.querySelectorAll('.col').forEach(addCardBar);
+    injectInserters();
     lucide.createIcons();
   }
 
@@ -1360,6 +1459,7 @@
     let startView = hashView || localStorage.getItem('active-view') || 'flow';
     if(!['flow','step','admin'].includes(startView)) startView = 'flow';
     setView(startView);
+    toggleSidebar(localStorage.getItem('sidebar-collapsed') === '1');   // restore collapsed choice
 
     // Opened from a shared link: persist locally and clean the URL.
     if(hashView){
@@ -1524,6 +1624,16 @@
     if(v === 'flow')  ensureFlowDoc('franchisor');
     if(v === 'admin') ensureFlowDoc('admin-flow');
     if(onFlowCanvas){ applyTransform(); renderEdges(); }
+  }
+
+  // Show/hide the contextual property sidebar. Generic + persisted: a body class so
+  // it works for any view that docks a sidebar, and the choice is remembered.
+  function toggleSidebar(force){
+    const collapsed = force !== undefined ? force : !document.body.classList.contains('sidebar-collapsed');
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+    const btn = document.getElementById('sidebar-toggle');
+    if(btn) btn.classList.toggle('active', collapsed);
+    try{ localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0'); }catch(e){}
   }
   // Load a document into the flow canvas only if it isn't already the active one.
   function ensureFlowDoc(docId){ if(flowDoc !== docId) loadFlowDoc(docId); }
